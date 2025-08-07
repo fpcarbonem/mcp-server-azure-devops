@@ -231,14 +231,14 @@ export class WikiClient {
     // Get the actual project GUID (required for on-premises TFS)
     const actualProjectId = await this.getProjectId(project);
 
-    // Ensure pagePath starts with a forward slash
-    const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    // Encode the page path, handling forward slashes properly
+    const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
     // Construct the URL to get the wiki page using project GUID
     const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '7.1',
-      path: normalizedPath,
+      path: encodedPagePath,
       // Add TFS-specific parameters based on working browser request
       'versionDescriptor.version': 'wikiMaster',
       includeContent: 'true',
