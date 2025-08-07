@@ -228,14 +228,21 @@ export class WikiClient {
     // Use the default project if not provided
     const project = projectId || defaultProject;
 
+    // Get the actual project GUID (required for on-premises TFS)
+    const actualProjectId = await this.getProjectId(project);
+
     // Ensure pagePath starts with a forward slash
     const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
 
-    // Construct the URL to get the wiki page
-    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Construct the URL to get the wiki page using project GUID
+    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '7.1',
       path: normalizedPath,
+      // Add TFS-specific parameters based on working browser request
+      'versionDescriptor.version': 'wikiMaster',
+      includeContent: 'true',
+      recursionLevel: '0',
     };
 
     try {
@@ -320,8 +327,11 @@ export class WikiClient {
     // Encode the page path, handling forward slashes properly
     const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
-    // Construct the URL to create the wiki page
-    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Get the actual project GUID (required for on-premises TFS)
+    const actualProjectId = await this.getProjectId(project);
+
+    // Construct the URL to create the wiki page using project GUID
+    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
 
     const params: Record<string, string> = {
       'api-version': '7.1',
@@ -450,8 +460,11 @@ export class WikiClient {
     // Encode the page path, handling forward slashes properly
     const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
-    // Construct the URL to update the wiki page
-    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Get the actual project GUID (required for on-premises TFS)
+    const actualProjectId = await this.getProjectId(project);
+
+    // Construct the URL to update the wiki page using project GUID
+    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '7.1',
       path: encodedPagePath,
@@ -560,8 +573,11 @@ export class WikiClient {
     // Use the default project if not provided
     const project = projectId || defaultProject;
 
-    // Construct the URL for the Pages Batch API
-    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pagesbatch`;
+    // Get the actual project GUID (required for on-premises TFS)
+    const actualProjectId = await this.getProjectId(project);
+
+    // Construct the URL for the Pages Batch API using project GUID
+    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pagesbatch`;
 
     const allPages: WikiPageSummary[] = [];
     let continuationToken: string | undefined;
