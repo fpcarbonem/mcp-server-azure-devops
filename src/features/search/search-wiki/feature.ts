@@ -61,17 +61,14 @@ export async function searchWiki(
     // Get the authorization header from the connection
     const authHeader = await getAuthorizationHeader();
 
-    // Extract organization and project from the connection URL
-    const { organization, project } = extractOrgAndProject(
-      connection,
-      options.projectId,
-    );
+    // Get the search base URL from the connection URL
+    const baseUrl = getSearchBaseUrl(connection);
 
     // Make the search API request
     // If projectId is provided, include it in the URL, otherwise perform organization-wide search
     const searchUrl = options.projectId
-      ? `https://almsearch.dev.azure.com/${organization}/${project}/_apis/search/wikisearchresults?api-version=7.1`
-      : `https://almsearch.dev.azure.com/${organization}/_apis/search/wikisearchresults?api-version=7.1`;
+      ? `${baseUrl}/${options.projectId}/_apis/search/wikisearchresults?api-version=7.1`
+      : `${baseUrl}/_apis/search/wikisearchresults?api-version=7.1`;
 
     const searchResponse = await axios.post<WikiSearchResponse>(
       searchUrl,
@@ -124,31 +121,26 @@ export async function searchWiki(
 }
 
 /**
- * Extract organization and project from the connection URL
+ * Get the search base URL from the connection URL
+ * Handles both Azure DevOps Services (cloud) and on-premises Azure DevOps Server/TFS
  *
  * @param connection The Azure DevOps WebApi connection
- * @param projectId The project ID or name (optional)
- * @returns The organization and project
+ * @returns The base URL for search API calls
  */
-function extractOrgAndProject(
-  connection: WebApi,
-  projectId?: string,
-): { organization: string; project: string } {
-  // Extract organization from the connection URL
+function getSearchBaseUrl(connection: WebApi): string {
   const url = connection.serverUrl;
-  const match = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
-  const organization = match ? match[1] : '';
 
-  if (!organization) {
-    throw new AzureDevOpsValidationError(
-      'Could not extract organization from connection URL',
-    );
+  // For Azure DevOps Services (cloud), use the search-specific subdomain
+  const cloudMatch = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
+  if (cloudMatch) {
+    const organization = cloudMatch[1];
+    return `https://almsearch.dev.azure.com/${organization}`;
   }
 
-  return {
-    organization,
-    project: projectId || '',
-  };
+  // For on-premises Azure DevOps Server/TFS, use the same base URL
+  // Remove any trailing slashes and collection paths for search API
+  const cleanUrl = url.replace(/\/+$/, '');
+  return cleanUrl;
 }
 
 /**

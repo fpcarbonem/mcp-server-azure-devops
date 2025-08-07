@@ -59,11 +59,11 @@ export async function searchCode(
     // Get the authorization header from the connection
     const authHeader = await getAuthorizationHeader();
 
-    // Extract organization from the connection URL
-    const { organization } = extractOrgFromUrl(connection);
+    // Extract base URL from the connection URL
+    const baseUrl = getSearchBaseUrl(connection);
 
     // Make the search API request with the project ID
-    const searchUrl = `https://almsearch.dev.azure.com/${organization}/${projectId}/_apis/search/codesearchresults?api-version=7.1`;
+    const searchUrl = `${baseUrl}/${projectId}/_apis/search/codesearchresults?api-version=7.1`;
 
     const searchResponse = await axios.post<CodeSearchResponse>(
       searchUrl,
@@ -122,26 +122,26 @@ export async function searchCode(
 }
 
 /**
- * Extract organization from the connection URL
+ * Get the search base URL from the connection URL
+ * Handles both Azure DevOps Services (cloud) and on-premises Azure DevOps Server/TFS
  *
  * @param connection The Azure DevOps WebApi connection
- * @returns The organization
+ * @returns The base URL for search API calls
  */
-function extractOrgFromUrl(connection: WebApi): { organization: string } {
-  // Extract organization from the connection URL
+function getSearchBaseUrl(connection: WebApi): string {
   const url = connection.serverUrl;
-  const match = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
-  const organization = match ? match[1] : '';
 
-  if (!organization) {
-    throw new AzureDevOpsValidationError(
-      'Could not extract organization from connection URL',
-    );
+  // For Azure DevOps Services (cloud), use the search-specific subdomain
+  const cloudMatch = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
+  if (cloudMatch) {
+    const organization = cloudMatch[1];
+    return `https://almsearch.dev.azure.com/${organization}`;
   }
 
-  return {
-    organization,
-  };
+  // For on-premises Azure DevOps Server/TFS, use the same base URL
+  // Remove any trailing slashes and collection paths for search API
+  const cleanUrl = url.replace(/\/+$/, '');
+  return cleanUrl;
 }
 
 /**

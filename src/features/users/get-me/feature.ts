@@ -4,7 +4,6 @@ import { DefaultAzureCredential, AzureCliCredential } from '@azure/identity';
 import {
   AzureDevOpsError,
   AzureDevOpsAuthenticationError,
-  AzureDevOpsValidationError,
 } from '../../../shared/errors';
 import { UserProfile } from '../types';
 
@@ -19,16 +18,15 @@ import { UserProfile } from '../types';
  */
 export async function getMe(connection: WebApi): Promise<UserProfile> {
   try {
-    // Extract organization from the connection URL
-    const { organization } = extractOrgFromUrl(connection.serverUrl);
+    // Get the profile API base URL from the connection URL
+    const baseUrl = getProfileBaseUrl(connection);
 
     // Get the authorization header
     const authHeader = await getAuthorizationHeader();
 
     // Make direct call to the Profile API endpoint
-    // Note: This API is in the vssps.dev.azure.com domain, not dev.azure.com
     const response = await axios.get(
-      `https://vssps.dev.azure.com/${organization}/_apis/profile/profiles/me?api-version=7.1`,
+      `${baseUrl}/_apis/profile/profiles/me?api-version=7.1`,
       {
         headers: {
           Authorization: authHeader,
@@ -69,36 +67,26 @@ export async function getMe(connection: WebApi): Promise<UserProfile> {
 }
 
 /**
- * Extract organization from the Azure DevOps URL
+ * Get the profile API base URL from the connection URL
+ * Handles both Azure DevOps Services (cloud) and on-premises Azure DevOps Server/TFS
  *
- * @param url The Azure DevOps URL
- * @returns The organization
+ * @param connection The Azure DevOps WebApi connection
+ * @returns The base URL for profile API calls
  */
-function extractOrgFromUrl(url: string): { organization: string } {
-  // First try modern dev.azure.com format
-  let match = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
+function getProfileBaseUrl(connection: WebApi): string {
+  const url = connection.serverUrl;
 
-  // If not found, try legacy visualstudio.com format
-  if (!match) {
-    match = url.match(/https?:\/\/([^.]+)\.visualstudio\.com/);
+  // For Azure DevOps Services (cloud), use the profile-specific subdomain
+  const cloudMatch = url.match(/https?:\/\/dev\.azure\.com\/([^/]+)/);
+  if (cloudMatch) {
+    const organization = cloudMatch[1];
+    return `https://vssps.dev.azure.com/${organization}`;
   }
 
-  // Fallback: capture the first path segment for any URL
-  if (!match) {
-    match = url.match(/https?:\/\/[^/]+\/([^/]+)/);
-  }
-
-  const organization = match ? match[1] : '';
-
-  if (!organization) {
-    throw new AzureDevOpsValidationError(
-      'Could not extract organization from URL',
-    );
-  }
-
-  return {
-    organization,
-  };
+  // For on-premises Azure DevOps Server/TFS, use the same base URL
+  // Remove any trailing slashes and collection paths for profile API
+  const cleanUrl = url.replace(/\/+$/, '');
+  return cleanUrl;
 }
 
 /**
