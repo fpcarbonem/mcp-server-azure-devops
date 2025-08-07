@@ -42,16 +42,6 @@ export interface WikiPageSummary {
   order?: number;
 }
 
-interface WikiPagesBatchRequest {
-  top: number;
-  continuationToken?: string;
-}
-
-interface WikiPagesBatchResponse {
-  value: WikiPageSummary[];
-  continuationToken?: string;
-}
-
 interface PageUpdateOptions {
   comment?: string;
   versionDescriptor?: {
@@ -237,12 +227,9 @@ export class WikiClient {
     // Construct the URL to get the wiki page using project GUID
     const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
-      'api-version': '7.1',
+      'api-version': '5.0',
       path: encodedPagePath,
-      // Add TFS-specific parameters based on working browser request
-      'versionDescriptor.version': 'wikiMaster',
       includeContent: 'true',
-      recursionLevel: '0',
     };
 
     try {
@@ -334,7 +321,7 @@ export class WikiClient {
     const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
 
     const params: Record<string, string> = {
-      'api-version': '7.1',
+      'api-version': '5.0',
       path: encodedPagePath,
     };
 
@@ -466,7 +453,7 @@ export class WikiClient {
     // Construct the URL to update the wiki page using project GUID
     const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
-      'api-version': '7.1',
+      'api-version': '5.0',
       path: encodedPagePath,
     };
 
@@ -576,46 +563,34 @@ export class WikiClient {
     // Get the actual project GUID (required for on-premises TFS)
     const actualProjectId = await this.getProjectId(project);
 
-    // Construct the URL for the Pages Batch API using project GUID
-    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pagesbatch`;
+    // Try the standard pages endpoint first for TFS compatibility
+    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
 
     const allPages: WikiPageSummary[] = [];
-    let continuationToken: string | undefined;
 
     try {
       // Get authorization header
       const authHeader = await getAuthorizationHeader();
 
-      do {
-        // Prepare the request body
-        const requestBody: WikiPagesBatchRequest = {
-          top: 100,
-          ...(continuationToken && { continuationToken }),
-        };
+      // Make a GET request to list pages with correct API version
+      const response = await axios.get(url, {
+        params: {
+          'api-version': '5.0',
+          recursionLevel: 'Full',
+        },
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        // Make the API request
-        const response = await axios.post<WikiPagesBatchResponse>(
-          url,
-          requestBody,
-          {
-            params: {
-              'api-version': '7.1',
-            },
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-
-        // Add the pages from this batch to our collection
-        if (response.data.value && Array.isArray(response.data.value)) {
-          allPages.push(...response.data.value);
-        }
-
-        // Update continuation token for next iteration
-        continuationToken = response.data.continuationToken;
-      } while (continuationToken);
+      // Handle the response - it should be an array of pages directly
+      if (response.data && Array.isArray(response.data)) {
+        allPages.push(...response.data);
+      } else if (response.data.value && Array.isArray(response.data.value)) {
+        // Fallback for Azure DevOps Cloud format
+        allPages.push(...response.data.value);
+      }
 
       // Sort results by order then path
       return allPages.sort((a, b) => {
