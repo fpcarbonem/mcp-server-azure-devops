@@ -57,7 +57,7 @@ export const handleWikisRequest: RequestHandler = async (
 ): Promise<{ content: Array<{ type: string; text: string }> }> => {
   switch (request.params.name) {
     case 'get_wikis': {
-      const args = GetWikisSchema.parse(request.params.arguments);
+      const args = GetWikisSchema.parse(request.params.arguments || {});
       const result = await getWikis(connection, {
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
@@ -67,7 +67,7 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'get_wiki_page': {
-      const args = GetWikiPageSchema.parse(request.params.arguments);
+      const args = GetWikiPageSchema.parse(request.params.arguments || {});
       const result = await getWikiPage({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
@@ -79,7 +79,7 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'create_wiki': {
-      const args = CreateWikiSchema.parse(request.params.arguments);
+      const args = CreateWikiSchema.parse(request.params.arguments || {});
       const result = await createWiki(connection, {
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
@@ -93,7 +93,7 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'update_wiki_page': {
-      const args = UpdateWikiPageSchema.parse(request.params.arguments);
+      const args = UpdateWikiPageSchema.parse(request.params.arguments || {});
       const result = await updateWikiPage({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
@@ -107,7 +107,7 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'list_wiki_pages': {
-      const args = ListWikiPagesSchema.parse(request.params.arguments);
+      const args = ListWikiPagesSchema.parse(request.params.arguments || {});
       const result = await listWikiPages({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
@@ -118,7 +118,7 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'create_wiki_page': {
-      const args = CreateWikiPageSchema.parse(request.params.arguments);
+      const args = CreateWikiPageSchema.parse(request.params.arguments || {});
       const result = await createWikiPage({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
