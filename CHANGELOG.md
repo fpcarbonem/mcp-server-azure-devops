@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.45](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.44...mcp-server-azure-devops-v0.1.45) (2025-08-07)
+
+
+### Bug Fixes
+
+* resolve Zod validation errors for wiki tools ([ad04a24](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/ad04a24ac4bc25b382c687107bb5195fcb1442fa))
+
 ## [0.1.44](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.43...mcp-server-azure-devops-v0.1.44) (2025-08-07)
 
 
