@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.46](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.45...mcp-server-azure-devops-v0.1.46) (2025-08-07)
+
+
+### Bug Fixes
+
+* properly encode wiki page paths for TFS compatibility ([40bc7dc](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/40bc7dcaf6e59bc2adf12c8ea2c72db0b81da5ad))
+
 ## [0.1.45](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.44...mcp-server-azure-devops-v0.1.45) (2025-08-07)
 
 
