@@ -59,7 +59,7 @@ export interface CreateWikiOptions {
  * @throws {AzureDevOpsError} When an error occurs while creating the wiki
  */
 export async function createWiki(
-  _connection: WebApi,
+  _connection: WebApi | null,
   options: CreateWikiOptions,
 ): Promise<string> {
   try {
