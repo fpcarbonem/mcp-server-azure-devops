@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.53](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.52...mcp-server-azure-devops-v0.1.53) (2025-08-08)
+
+
+### Bug Fixes
+
+* allow null connection parameter in createWiki function ([6a87a8b](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/6a87a8beb414a878d69bd5d3d34959aa84c1952c))
+
 ## [0.1.52](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.51...mcp-server-azure-devops-v0.1.52) (2025-08-08)
 
 
