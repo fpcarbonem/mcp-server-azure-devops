@@ -6,7 +6,11 @@ import {
   AzureDevOpsValidationError,
   AzureDevOpsPermissionError,
 } from '../shared/errors';
-import { defaultOrg, defaultProject } from '../utils/environment';
+import {
+  defaultOrg,
+  defaultProject,
+  defaultBaseUrl,
+} from '../utils/environment';
 
 interface AzureDevOpsApiErrorResponse {
   message?: string;
@@ -51,11 +55,10 @@ interface PageUpdateOptions {
 
 export class WikiClient {
   private baseUrl: string;
-  private organizationId: string;
 
-  constructor(organizationId: string) {
-    this.organizationId = organizationId || defaultOrg;
-    this.baseUrl = `https://dev.azure.com/${this.organizationId}`;
+  constructor(_organizationId?: string) {
+    // Use the base URL from environment utils which handles both TFS and Azure DevOps Cloud
+    this.baseUrl = defaultBaseUrl;
   }
 
   /**
@@ -218,14 +221,11 @@ export class WikiClient {
     // Use the default project if not provided
     const project = projectId || defaultProject;
 
-    // Get the actual project GUID (required for on-premises TFS)
-    const actualProjectId = await this.getProjectId(project);
-
     // Encode the page path, handling forward slashes properly
     const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
-    // Construct the URL to get the wiki page using project GUID
-    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Construct the URL to get the wiki page using project name
+    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '5.0',
       path: encodedPagePath,
@@ -314,11 +314,8 @@ export class WikiClient {
     // Encode the page path, handling forward slashes properly
     const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
-    // Get the actual project GUID (required for on-premises TFS)
-    const actualProjectId = await this.getProjectId(project);
-
-    // Construct the URL to create the wiki page using project GUID
-    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Construct the URL to create the wiki page using project name
+    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
 
     const params: Record<string, string> = {
       'api-version': '5.0',
@@ -447,11 +444,8 @@ export class WikiClient {
     // Encode the page path, handling forward slashes properly
     const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
 
-    // Get the actual project GUID (required for on-premises TFS)
-    const actualProjectId = await this.getProjectId(project);
-
-    // Construct the URL to update the wiki page using project GUID
-    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Construct the URL to update the wiki page using project name
+    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '5.0',
       path: encodedPagePath,
@@ -560,11 +554,8 @@ export class WikiClient {
     // Use the default project if not provided
     const project = projectId || defaultProject;
 
-    // Get the actual project GUID (required for on-premises TFS)
-    const actualProjectId = await this.getProjectId(project);
-
-    // Try the standard pages endpoint first for TFS compatibility
-    const url = `${this.baseUrl}/${actualProjectId}/_apis/wiki/wikis/${wikiId}/pages`;
+    // Use project name directly in URL as per Microsoft documentation
+    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
 
     const allPages: WikiPageSummary[] = [];
 
@@ -584,12 +575,52 @@ export class WikiClient {
         },
       });
 
-      // Handle the response - it should be an array of pages directly
+      // Handle the response format
       if (response.data && Array.isArray(response.data)) {
+        // Azure DevOps Cloud format - flat array
         allPages.push(...response.data);
       } else if (response.data.value && Array.isArray(response.data.value)) {
-        // Fallback for Azure DevOps Cloud format
+        // Azure DevOps Cloud paged format
         allPages.push(...response.data.value);
+      } else if (response.data && response.data.subPages) {
+        // TFS on-premises format - hierarchical structure
+        // Extract all pages recursively from the hierarchy
+        const extractPagesRecursively = (page: any): WikiPageSummary[] => {
+          const pages: WikiPageSummary[] = [];
+
+          // Add the current page if it has a path (all valid pages should have paths)
+          // For TFS, we might need to generate an ID or use path as ID
+          if (page.path && page.path !== '/') {
+            pages.push({
+              id:
+                page.id ||
+                Math.abs(
+                  page.path
+                    .split('')
+                    .reduce(
+                      (a: number, b: string) =>
+                        ((a << 5) - a + b.charCodeAt(0)) & 0xffffffff,
+                      0,
+                    ),
+                ), // Generate hash ID if no ID exists
+              path: page.path,
+              url: page.url,
+              order: page.order,
+            });
+          }
+
+          // Recursively extract subpages
+          if (page.subPages && Array.isArray(page.subPages)) {
+            for (const subPage of page.subPages) {
+              pages.push(...extractPagesRecursively(subPage));
+            }
+          }
+
+          return pages;
+        };
+
+        // Extract all pages starting from the root
+        allPages.push(...extractPagesRecursively(response.data));
       }
 
       // Sort results by order then path
