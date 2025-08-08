@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.49](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.48...mcp-server-azure-devops-v0.1.49) (2025-08-08)
+
+
+### Features
+
+* standardize wiki tools to return JSON strings ([d9a74e7](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/d9a74e76773fcd4968aec10e9885df92b719a797))
+
 ## [0.1.48](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.47...mcp-server-azure-devops-v0.1.48) (2025-08-08)
 
 
