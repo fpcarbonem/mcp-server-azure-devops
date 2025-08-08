@@ -9,12 +9,10 @@ export const GetWikiPageSchema = z.object({
   organizationId: z
     .string()
     .optional()
-    .nullable()
     .describe(`The ID or name of the organization (Default: ${defaultOrg})`),
   projectId: z
     .string()
     .optional()
-    .nullable()
     .describe(`The ID or name of the project (Default: ${defaultProject})`),
   wikiId: z.string().describe('The ID or name of the wiki'),
   pagePath: z

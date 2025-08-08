@@ -67,7 +67,34 @@ export const handleWikisRequest: RequestHandler = async (
       };
     }
     case 'get_wiki_page': {
-      const args = GetWikiPageSchema.parse(request.params.arguments || {});
+      const parsed = GetWikiPageSchema.safeParse(
+        request.params.arguments ?? {},
+      );
+      if (!parsed.success) {
+        const issues = parsed.error.issues
+          .map((i) => `- ${i.path.join('.') || '(root)'}: ${i.message}`)
+          .join('\n');
+
+        const help = [
+          'Usage: get_wiki_page requires: wikiId (string), pagePath (string)',
+          `Defaults applied when omitted: organizationId -> ${defaultOrg}, projectId -> ${defaultProject}`,
+          'Try:',
+          '- Call get_wikis to list available wikis and obtain wikiId',
+          '- Call list_wiki_pages with {"wikiId":"<id>"} to discover valid pagePath values',
+          'Example payload: {"wikiId":"<your-wiki-id>","pagePath":"/Home"}',
+        ].join('\n');
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Invalid arguments for get_wiki_page:\n${issues}\n\n${help}`,
+            },
+          ],
+        };
+      }
+
+      const args = parsed.data;
       const result = await getWikiPage({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
