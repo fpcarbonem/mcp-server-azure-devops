@@ -277,9 +277,6 @@ export class WikiClient {
     // Normalize the wiki path according to Azure DevOps wiki path rules
     const normalizedPath = this.normalizeWikiPath(pagePath);
 
-    console.log(
-      `[WikiClient] Getting page: ${pagePath} -> normalized: ${normalizedPath}`,
-    );
 
     // Try the primary path first
     try {
@@ -292,12 +289,8 @@ export class WikiClient {
     } catch (error) {
       // On 404 with WikiPageNotFoundException, retry with alternative path
       if (error instanceof AzureDevOpsResourceNotFoundError) {
-        console.log(
-          `[WikiClient] Primary path failed, trying alternative path`,
-        );
 
         const alternativePath = this.createAlternativePath(normalizedPath);
-        console.log(`[WikiClient] Trying alternative path: ${alternativePath}`);
 
         try {
           return await this.fetchWikiPage(
@@ -343,9 +336,6 @@ export class WikiClient {
 
     // Add versionDescriptor for pinning to wikiMaster branch
     params['versionDescriptor.version'] = 'wikiMaster';
-
-    const finalUrl = `${url}?${new URLSearchParams(params).toString()}`;
-    console.log(`[WikiClient] Final URL: ${finalUrl}`);
 
     try {
       // Get authorization header
@@ -717,9 +707,6 @@ export class WikiClient {
       if (options?.path) {
         const normalizedPath = this.normalizeWikiPath(options.path);
         params.path = normalizedPath;
-        console.log(
-          `[WikiClient] Listing pages at path: ${options.path} -> normalized: ${normalizedPath}`,
-        );
       }
 
       if (options?.includeContent !== undefined) {
@@ -729,9 +716,6 @@ export class WikiClient {
       // Pin to wikiMaster branch by default
       params['versionDescriptor.version'] =
         options?.versionDescriptor || 'wikiMaster';
-
-      const finalUrl = `${url}?${new URLSearchParams(params).toString()}`;
-      console.log(`[WikiClient] List pages URL: ${finalUrl}`);
 
       // Make a GET request to list pages with correct API version
       const response = await axios.get(url, {

@@ -2,6 +2,44 @@ import * as azureDevOpsClient from '../../../clients/azure-devops';
 import { AzureDevOpsError } from '../../../shared/errors/azure-devops-errors';
 
 /**
+ * Normalize a wiki page path.
+ * Accepts paths like "/Folder/File-Name.md" and converts to "/Folder/File Name"
+ * - Ensures leading "/"
+ * - Strips trailing ".md" (case-insensitive)
+ * - Decodes percent-encodings (e.g., %2D -> -)
+ * - Converts hyphens to spaces in the last segment only
+ * - Collapses multiple slashes
+ */
+function normalizeWikiPath(input: string): string {
+  if (!input) return '/';
+  let path = input.trim();
+
+  // Ensure leading slash
+  if (!path.startsWith('/')) path = `/${path}`;
+
+  // Decode percent-encodings safely
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep as-is if decoding fails
+  }
+
+  // Remove trailing .md (case-insensitive)
+  path = path.replace(/\.md$/i, '');
+
+  // Collapse multiple slashes
+  path = path.replace(/\/+/g, '/');
+
+  // Replace hyphens with spaces in the last segment only
+  const parts = path.split('/');
+  const last = parts.pop() ?? '';
+  const normalizedLast = last.replace(/-/g, ' ');
+  parts.push(normalizedLast);
+
+  const normalized = parts.join('/') || '/';
+  return normalized;
+}
+/**
  * Options for getting a wiki page
  */
 export interface GetWikiPageOptions {
@@ -55,6 +93,8 @@ export async function getWikiPage(
     includeContent = true,
   } = options;
 
+  const normalizedPagePath = normalizeWikiPath(pagePath);
+
   try {
     // Create the client
     const client = await azureDevOpsClient.getWikiClient({
@@ -65,7 +105,7 @@ export async function getWikiPage(
     const pageData = await client.getPage(
       projectId,
       wikiId,
-      pagePath,
+      normalizedPagePath,
       includeContent,
     );
 
