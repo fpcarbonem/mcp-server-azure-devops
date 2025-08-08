@@ -24,15 +24,22 @@ export interface GetWikiPageOptions {
 
   /**
    * The path of the page within the wiki
+   * Path will be automatically normalized (removes .md extension, converts hyphens to spaces in filenames)
    */
   pagePath: string;
+
+  /**
+   * Whether to include the page content in the response
+   * Defaults to true if not specified
+   */
+  includeContent?: boolean;
 }
 
 /**
  * Get a wiki page from a wiki
  *
  * @param options Options for getting a wiki page
- * @returns Wiki page content as text/plain
+ * @returns Wiki page content and metadata as JSON string
  * @throws {AzureDevOpsResourceNotFoundError} When the wiki page is not found
  * @throws {AzureDevOpsPermissionError} When the user does not have permission to access the wiki page
  * @throws {AzureDevOpsError} When an error occurs while fetching the wiki page
@@ -40,7 +47,13 @@ export interface GetWikiPageOptions {
 export async function getWikiPage(
   options: GetWikiPageOptions,
 ): Promise<string> {
-  const { organizationId, projectId, wikiId, pagePath } = options;
+  const {
+    organizationId,
+    projectId,
+    wikiId,
+    pagePath,
+    includeContent = true,
+  } = options;
 
   try {
     // Create the client
@@ -48,8 +61,16 @@ export async function getWikiPage(
       organizationId,
     });
 
-    // Get the wiki page
-    return (await client.getPage(projectId, wikiId, pagePath)).content;
+    // Get the wiki page with structured response
+    const pageData = await client.getPage(
+      projectId,
+      wikiId,
+      pagePath,
+      includeContent,
+    );
+
+    // Return the structured data as JSON string for MCP compatibility
+    return JSON.stringify(pageData, null, 2);
   } catch (error) {
     // If it's already an AzureDevOpsError, rethrow it
     if (error instanceof AzureDevOpsError) {

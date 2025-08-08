@@ -1,9 +1,5 @@
-import { WebApi } from 'azure-devops-node-api';
-import { WikiV2 } from 'azure-devops-node-api/interfaces/WikiInterfaces';
-import {
-  AzureDevOpsError,
-  AzureDevOpsResourceNotFoundError,
-} from '../../../shared/errors';
+import * as azureDevOpsClient from '../../../clients/azure-devops';
+import { AzureDevOpsError } from '../../../shared/errors';
 
 /**
  * Options for getting wikis
@@ -13,57 +9,44 @@ export interface GetWikisOptions {
    * The ID or name of the organization
    * If not provided, the default organization will be used
    */
-  organizationId?: string;
+  organizationId: string;
 
   /**
    * The ID or name of the project
-   * If not provided, the wikis from all projects will be returned
+   * If not provided, the default project will be used
    */
-  projectId?: string;
+  projectId: string;
 }
 
 /**
- * Get wikis in a project or organization
+ * Get wikis in a project
  *
- * @param connection The Azure DevOps WebApi connection
  * @param options Options for getting wikis
- * @returns List of wikis
+ * @returns List of wikis as JSON string
+ * @throws {AzureDevOpsResourceNotFoundError} When the project is not found or user lacks wiki access
+ * @throws {AzureDevOpsPermissionError} When the user does not have permission to access wikis
+ * @throws {AzureDevOpsError} When an error occurs while fetching wikis
  */
-export async function getWikis(
-  connection: WebApi,
-  options: GetWikisOptions,
-): Promise<WikiV2[]> {
+export async function getWikis(options: GetWikisOptions): Promise<string> {
+  const { organizationId, projectId } = options;
+
   try {
-    // Get the Wiki API client
-    const wikiApi = await connection.getWikiApi();
+    // Create the client
+    const client = await azureDevOpsClient.getWikiClient({
+      organizationId,
+    });
 
-    // If a projectId is provided, get wikis for that specific project
-    // Otherwise, get wikis for the entire organization
-    const { projectId } = options;
+    // Get the wikis for the project
+    const wikis = await client.listWikis(projectId);
 
-    const wikis = await wikiApi.getAllWikis(projectId);
-
-    return wikis || [];
+    // Return the wikis as JSON string for MCP compatibility
+    return JSON.stringify({ count: wikis.length, value: wikis }, null, 2);
   } catch (error) {
-    // Handle resource not found errors specifically
-    if (
-      error instanceof Error &&
-      error.message &&
-      error.message.includes('The resource cannot be found')
-    ) {
-      throw new AzureDevOpsResourceNotFoundError(
-        `Resource not found: ${options.projectId ? `Project '${options.projectId}'` : 'Organization'}`,
-      );
-    }
-
     // If it's already an AzureDevOpsError, rethrow it
     if (error instanceof AzureDevOpsError) {
       throw error;
     }
-
-    // Otherwise, wrap it in a generic error
-    throw new AzureDevOpsError(
-      `Failed to get wikis: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    // Otherwise wrap it in an AzureDevOpsError
+    throw new AzureDevOpsError('Failed to get wikis', { cause: error });
   }
 }

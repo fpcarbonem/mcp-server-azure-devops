@@ -11,9 +11,11 @@ export type UpdateWikiPageOptions = z.infer<typeof UpdateWikiPageSchema>;
 /**
  * Updates a wiki page in Azure DevOps
  * @param options - The options for updating the wiki page
- * @returns The updated wiki page
+ * @returns The updated wiki page as JSON string
  */
-export async function updateWikiPage(options: UpdateWikiPageOptions) {
+export async function updateWikiPage(
+  options: UpdateWikiPageOptions,
+): Promise<string> {
   const validatedOptions = UpdateWikiPageSchema.parse(options);
 
   const { organizationId, projectId, wikiId, pagePath, content, comment } =
@@ -40,5 +42,16 @@ export async function updateWikiPage(options: UpdateWikiPageOptions) {
     },
   );
 
-  return updatedPage;
+  // Return as JSON string for MCP compatibility
+  return JSON.stringify(
+    {
+      data: updatedPage,
+      metadata: {
+        operation: 'update_wiki_page',
+        timestamp: new Date().toISOString(),
+      },
+    },
+    null,
+    2,
+  );
 }

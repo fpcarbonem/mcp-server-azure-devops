@@ -52,7 +52,7 @@ export interface CreateWikiOptions {
  *
  * @param _connection The Azure DevOps WebApi connection (deprecated, kept for backward compatibility)
  * @param options Options for creating a wiki
- * @returns The created wiki
+ * @returns The created wiki as JSON string
  * @throws {AzureDevOpsValidationError} When required parameters are missing
  * @throws {AzureDevOpsResourceNotFoundError} When the project or repository is not found
  * @throws {AzureDevOpsPermissionError} When the user does not have permission to create a wiki
@@ -61,7 +61,7 @@ export interface CreateWikiOptions {
 export async function createWiki(
   _connection: WebApi,
   options: CreateWikiOptions,
-) {
+): Promise<string> {
   try {
     const {
       name,
@@ -99,7 +99,23 @@ export async function createWiki(
     };
 
     // Create the wiki
-    return await wikiClient.createWiki(projectId!, wikiCreateParams);
+    const createdWiki = await wikiClient.createWiki(
+      projectId!,
+      wikiCreateParams,
+    );
+
+    // Return as JSON string for MCP compatibility
+    return JSON.stringify(
+      {
+        data: createdWiki,
+        metadata: {
+          operation: 'create_wiki',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      null,
+      2,
+    );
   } catch (error) {
     // Just rethrow if it's already one of our error types
     if (error instanceof AzureDevOpsError) {

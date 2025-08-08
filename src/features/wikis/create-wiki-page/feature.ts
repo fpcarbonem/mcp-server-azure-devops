@@ -9,7 +9,7 @@ import { defaultOrg, defaultProject } from '../../../utils/environment';
  * If a page already exists at the specified path, it will be updated.
  *
  * @param {z.infer<typeof CreateWikiPageSchema>} params - The parameters for creating the wiki page.
- * @returns {Promise<any>} A promise that resolves with the API response.
+ * @returns {Promise<string>} A promise that resolves with the API response as JSON string.
  */
 export const createWikiPage = async (
   params: z.infer<typeof CreateWikiPageSchema>,
@@ -20,7 +20,7 @@ export const createWikiPage = async (
       data: Record<string, unknown>,
     ) => Promise<{ data: unknown }>;
   }, // For testing purposes only
-) => {
+): Promise<string> => {
   try {
     const { organizationId, projectId, wikiId, pagePath, content, comment } =
       params;
@@ -51,7 +51,19 @@ export const createWikiPage = async (
 
       // Make the API request
       const response = await client.put(apiUrl, requestBody);
-      return response.data;
+
+      // Return as JSON string for MCP compatibility
+      return JSON.stringify(
+        {
+          data: response.data,
+          metadata: {
+            operation: 'create_wiki_page',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        null,
+        2,
+      );
     } else {
       // Use default organization and project if not provided
       const org = organizationId ?? defaultOrg;
@@ -74,7 +86,7 @@ export const createWikiPage = async (
       };
 
       // This is the real implementation
-      return await wikiClient.updatePage(
+      const result = await wikiClient.updatePage(
         wikiPageContent,
         project,
         wikiId,
@@ -82,6 +94,19 @@ export const createWikiPage = async (
         {
           comment: comment ?? undefined,
         },
+      );
+
+      // Return as JSON string for MCP compatibility
+      return JSON.stringify(
+        {
+          data: result,
+          metadata: {
+            operation: 'create_wiki_page',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        null,
+        2,
       );
     }
   } catch (error: unknown) {

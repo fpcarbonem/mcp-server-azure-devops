@@ -1,106 +1,125 @@
-import { WebApi } from 'azure-devops-node-api';
-import { WikiV2 } from 'azure-devops-node-api/interfaces/WikiInterfaces';
+import { getWikis, GetWikisOptions } from './feature';
 import {
-  AzureDevOpsResourceNotFoundError,
   AzureDevOpsError,
+  AzureDevOpsResourceNotFoundError,
+  AzureDevOpsPermissionError,
 } from '../../../shared/errors';
-import { getWikis } from './feature';
+import * as azureDevOpsClient from '../../../clients/azure-devops';
 
-// Mock the Azure DevOps WebApi
-jest.mock('azure-devops-node-api');
+// Mock Azure DevOps client
+jest.mock('../../../clients/azure-devops');
+const mockListWikis = jest.fn();
+
+(azureDevOpsClient.getWikiClient as jest.Mock).mockImplementation(() => {
+  return Promise.resolve({
+    listWikis: mockListWikis,
+  });
+});
 
 describe('getWikis unit', () => {
-  // Mock WikiApi client
-  const mockWikiApi = {
-    getAllWikis: jest.fn(),
-  };
-
-  // Mock WebApi connection
-  const mockConnection = {
-    getWikiApi: jest.fn().mockResolvedValue(mockWikiApi),
-  } as unknown as WebApi;
+  const mockWikis = [
+    {
+      id: '4ebdc992-4531-4b20-83ce-d3872ef0fa51',
+      versions: [{ version: 'wikiMaster' }],
+      url: 'https://tfs.deltek.com/tfs/Deltek/1bc91b4b-388e-4883-8070-c3147ab03f66/_apis/wiki/wikis/4ebdc992-4531-4b20-83ce-d3872ef0fa51',
+      remoteUrl:
+        'https://tfs.deltek.com/tfs/Deltek/1bc91b4b-388e-4883-8070-c3147ab03f66/_wiki/wikis/4ebdc992-4531-4b20-83ce-d3872ef0fa51',
+      type: 'projectWiki',
+      name: 'StrategicSolutionsSharedServices.wiki',
+      projectId: '1bc91b4b-388e-4883-8070-c3147ab03f66',
+      repositoryId: '4ebdc992-4531-4b20-83ce-d3872ef0fa51',
+      mappedPath: '/',
+    },
+  ];
 
   beforeEach(() => {
-    // Clear mock calls between tests
     jest.clearAllMocks();
+    mockListWikis.mockResolvedValue(mockWikis);
   });
 
-  test('should return wikis for a project', async () => {
-    // Mock data
-    const mockWikis: WikiV2[] = [
-      {
-        id: 'wiki1',
-        name: 'Project Wiki',
-        mappedPath: '/',
-        remoteUrl: 'https://example.com/wiki1',
-        url: 'https://dev.azure.com/org/project/_wiki/wikis/wiki1',
-      },
-      {
-        id: 'wiki2',
-        name: 'Code Wiki',
-        mappedPath: '/docs',
-        remoteUrl: 'https://example.com/wiki2',
-        url: 'https://dev.azure.com/org/project/_wiki/wikis/wiki2',
-      },
-    ];
-
-    // Setup mock responses
-    mockWikiApi.getAllWikis.mockResolvedValue(mockWikis);
-
-    // Call the function
-    const result = await getWikis(mockConnection, {
+  it('should return wikis as structured JSON', async () => {
+    // Arrange
+    const options: GetWikisOptions = {
+      organizationId: 'testOrg',
       projectId: 'testProject',
+    };
+
+    // Act
+    const result = await getWikis(options);
+
+    // Assert - The result should be JSON string with count and value
+    const parsedResult = JSON.parse(result);
+    expect(parsedResult).toEqual({
+      count: 1,
+      value: mockWikis,
     });
-
-    // Assertions
-    expect(mockConnection.getWikiApi).toHaveBeenCalledTimes(1);
-    expect(mockWikiApi.getAllWikis).toHaveBeenCalledWith('testProject');
-    expect(result).toEqual(mockWikis);
-    expect(result.length).toBe(2);
-  });
-
-  test('should return empty array when no wikis are found', async () => {
-    // Setup mock responses
-    mockWikiApi.getAllWikis.mockResolvedValue([]);
-
-    // Call the function
-    const result = await getWikis(mockConnection, {
-      projectId: 'projectWithNoWikis',
+    expect(azureDevOpsClient.getWikiClient).toHaveBeenCalledWith({
+      organizationId: 'testOrg',
     });
-
-    // Assertions
-    expect(mockConnection.getWikiApi).toHaveBeenCalledTimes(1);
-    expect(mockWikiApi.getAllWikis).toHaveBeenCalledWith('projectWithNoWikis');
-    expect(result).toEqual([]);
+    expect(mockListWikis).toHaveBeenCalledWith('testProject');
   });
 
-  test('should handle API errors gracefully', async () => {
-    // Setup mock to throw an error
-    const mockError = new Error('API error occurred');
-    mockWikiApi.getAllWikis.mockRejectedValue(mockError);
+  it('should handle empty wikis list', async () => {
+    // Arrange
+    mockListWikis.mockResolvedValue([]);
+    const options: GetWikisOptions = {
+      organizationId: 'testOrg',
+      projectId: 'testProject',
+    };
 
-    // Call the function and expect it to throw
-    await expect(
-      getWikis(mockConnection, { projectId: 'testProject' }),
-    ).rejects.toThrow(AzureDevOpsError);
+    // Act
+    const result = await getWikis(options);
 
-    // Assertions
-    expect(mockConnection.getWikiApi).toHaveBeenCalledTimes(1);
-    expect(mockWikiApi.getAllWikis).toHaveBeenCalledWith('testProject');
+    // Assert
+    const parsedResult = JSON.parse(result);
+    expect(parsedResult).toEqual({
+      count: 0,
+      value: [],
+    });
   });
 
-  test('should throw ResourceNotFoundError for non-existent project', async () => {
-    // Setup mock to throw an error with specific resource not found message
-    const mockError = new Error('The resource cannot be found');
-    mockWikiApi.getAllWikis.mockRejectedValue(mockError);
+  it('should throw ResourceNotFoundError when project is not found', async () => {
+    // Arrange
+    mockListWikis.mockRejectedValue(
+      new AzureDevOpsResourceNotFoundError('Project not found'),
+    );
 
-    // Call the function and expect it to throw a specific error type
-    await expect(
-      getWikis(mockConnection, { projectId: 'nonExistentProject' }),
-    ).rejects.toThrow(AzureDevOpsResourceNotFoundError);
+    // Act & Assert
+    const options: GetWikisOptions = {
+      organizationId: 'testOrg',
+      projectId: 'nonExistentProject',
+    };
 
-    // Assertions
-    expect(mockConnection.getWikiApi).toHaveBeenCalledTimes(1);
-    expect(mockWikiApi.getAllWikis).toHaveBeenCalledWith('nonExistentProject');
+    await expect(getWikis(options)).rejects.toThrow(
+      AzureDevOpsResourceNotFoundError,
+    );
+  });
+
+  it('should throw PermissionError when user lacks permissions', async () => {
+    // Arrange
+    mockListWikis.mockRejectedValue(
+      new AzureDevOpsPermissionError('Permission denied'),
+    );
+
+    // Act & Assert
+    const options: GetWikisOptions = {
+      organizationId: 'testOrg',
+      projectId: 'testProject',
+    };
+
+    await expect(getWikis(options)).rejects.toThrow(AzureDevOpsPermissionError);
+  });
+
+  it('should throw generic error for other failures', async () => {
+    // Arrange
+    mockListWikis.mockRejectedValue(new Error('Network error'));
+
+    // Act & Assert
+    const options: GetWikisOptions = {
+      organizationId: 'testOrg',
+      projectId: 'testProject',
+    };
+
+    await expect(getWikis(options)).rejects.toThrow(AzureDevOpsError);
   });
 });

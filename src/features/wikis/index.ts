@@ -58,12 +58,12 @@ export const handleWikisRequest: RequestHandler = async (
   switch (request.params.name) {
     case 'get_wikis': {
       const args = GetWikisSchema.parse(request.params.arguments || {});
-      const result = await getWikis(connection, {
+      const result = await getWikis({
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: result }],
       };
     }
     case 'get_wiki_page': {
@@ -73,6 +73,7 @@ export const handleWikisRequest: RequestHandler = async (
         projectId: args.projectId ?? defaultProject,
         wikiId: args.wikiId,
         pagePath: args.pagePath,
+        includeContent: args.includeContent,
       });
       return {
         content: [{ type: 'text', text: result }],
@@ -89,7 +90,7 @@ export const handleWikisRequest: RequestHandler = async (
         mappedPath: args.mappedPath ?? undefined,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: result }],
       };
     }
     case 'update_wiki_page': {
@@ -103,7 +104,7 @@ export const handleWikisRequest: RequestHandler = async (
         comment: args.comment,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: result }],
       };
     }
     case 'list_wiki_pages': {
@@ -112,9 +113,13 @@ export const handleWikisRequest: RequestHandler = async (
         organizationId: args.organizationId ?? defaultOrg,
         projectId: args.projectId ?? defaultProject,
         wikiId: args.wikiId,
+        path: args.path,
+        recursionLevel: args.recursionLevel,
+        includeContent: args.includeContent,
+        versionDescriptor: args.versionDescriptor,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: result }],
       };
     }
     case 'create_wiki_page': {
@@ -128,7 +133,7 @@ export const handleWikisRequest: RequestHandler = async (
         comment: args.comment,
       });
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text', text: result }],
       };
     }
     default:

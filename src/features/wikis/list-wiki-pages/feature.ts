@@ -17,15 +17,23 @@ export interface WikiPageSummary {
  * List wiki pages from a wiki
  *
  * @param options Options for listing wiki pages
- * @returns Array of wiki page summaries
+ * @returns Wiki pages as JSON string with count and value fields
  * @throws {AzureDevOpsResourceNotFoundError} When the wiki is not found
  * @throws {AzureDevOpsPermissionError} When the user does not have permission to access the wiki
  * @throws {AzureDevOpsError} When an error occurs while fetching the wiki pages
  */
 export async function listWikiPages(
   options: ListWikiPagesOptions,
-): Promise<WikiPageSummary[]> {
-  const { organizationId, projectId, wikiId } = options;
+): Promise<string> {
+  const {
+    organizationId,
+    projectId,
+    wikiId,
+    path,
+    recursionLevel,
+    includeContent,
+    versionDescriptor,
+  } = options;
 
   // Use defaults if not provided
   const orgId = organizationId || defaultOrg;
@@ -37,16 +45,16 @@ export async function listWikiPages(
       organizationId: orgId,
     });
 
-    // Get the wiki pages
-    const pages = await client.listWikiPages(projId, wikiId);
+    // Get the wiki pages with all options
+    const pages = await client.listWikiPages(projId, wikiId, {
+      path,
+      recursionLevel,
+      includeContent,
+      versionDescriptor,
+    });
 
-    // Return the pages directly since the client interface now matches our requirements
-    return pages.map((page) => ({
-      id: page.id,
-      path: page.path,
-      url: page.url,
-      order: page.order,
-    }));
+    // Return as JSON string for MCP compatibility with count and value format
+    return JSON.stringify({ count: pages.length, value: pages }, null, 2);
   } catch (error) {
     // If it's already an AzureDevOpsError, rethrow it
     if (error instanceof AzureDevOpsError) {

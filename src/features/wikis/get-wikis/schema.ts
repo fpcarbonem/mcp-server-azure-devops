@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { defaultProject, defaultOrg } from '../../../utils/environment';
 
 /**
- * Schema for listing wikis in an Azure DevOps project or organization
+ * Schema for listing wikis in an Azure DevOps project
  */
 export const GetWikisSchema = z.object({
   organizationId: z

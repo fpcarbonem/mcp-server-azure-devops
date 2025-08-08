@@ -44,6 +44,10 @@ export interface WikiPageSummary {
   path: string;
   url?: string;
   order?: number;
+  remoteUrl?: string;
+  gitItemPath?: string;
+  isParentPage?: boolean;
+  content?: string;
 }
 
 interface PageUpdateOptions {
@@ -210,47 +214,99 @@ export class WikiClient {
   }
 
   /**
+   * Normalizes a wiki page path according to Azure DevOps wiki path rules
+   * - Removes .md extension
+   * - Converts hyphens to spaces in the final segment (filename)
+   * - Ensures path starts with /
+   * @param path - The raw path to normalize
+   * @returns The normalized wiki path
+   */
+  private normalizeWikiPath(path: string): string {
+    let normalizedPath = path;
+
+    // Ensure path starts with /
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/' + normalizedPath;
+    }
+
+    // Remove .md extension if present
+    if (normalizedPath.endsWith('.md')) {
+      normalizedPath = normalizedPath.slice(0, -3);
+    }
+
+    // Convert hyphens to spaces in the final segment only
+    const segments = normalizedPath.split('/');
+    if (segments.length > 0) {
+      const lastSegment = segments[segments.length - 1];
+      if (lastSegment) {
+        // Replace hyphens with spaces in the filename part
+        segments[segments.length - 1] = lastSegment.replace(/-/g, ' ');
+        normalizedPath = segments.join('/');
+      }
+    }
+
+    return normalizedPath;
+  }
+
+  /**
    * Gets a wiki page's content
    * @param projectId - Project ID or name
    * @param wikiId - Wiki ID or name
    * @param pagePath - Path of the wiki page
-   * @param options - Additional options like version
-   * @returns The wiki page content and ETag
+   * @param includeContent - Whether to include page content (default: true)
+   * @returns The wiki page content and metadata
    */
-  async getPage(projectId: string, wikiId: string, pagePath: string) {
+  async getPage(
+    projectId: string,
+    wikiId: string,
+    pagePath: string,
+    includeContent: boolean = true,
+  ) {
     // Use the default project if not provided
     const project = projectId || defaultProject;
 
-    // Encode the page path, handling forward slashes properly
-    const encodedPagePath = encodeURIComponent(pagePath).replace(/%2F/g, '/');
+    // Normalize the wiki path according to Azure DevOps wiki path rules
+    const normalizedPath = this.normalizeWikiPath(pagePath);
+
+    // URL encode the path, preserving forward slashes
+    const encodedPagePath = encodeURIComponent(normalizedPath).replace(
+      /%2F/g,
+      '/',
+    );
 
     // Construct the URL to get the wiki page using project name
     const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
-      'api-version': '5.0',
+      'api-version': '7.1',
       path: encodedPagePath,
-      includeContent: 'true',
+      includeContent: includeContent.toString(),
+      'versionDescriptor.version': 'wikiMaster',
     };
 
     try {
       // Get authorization header
       const authHeader = await getAuthorizationHeader();
 
-      // Make the API request for plain text content
+      // Make the API request for JSON content
       const response = await axios.get(url, {
         params,
         headers: {
           Authorization: authHeader,
-          Accept: 'text/plain',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        responseType: 'text',
       });
+
+      // Extract content from the JSON response
+      const pageData = response.data;
 
       // Return both the content and the ETag
       return {
-        content: response.data,
+        content: pageData.content || '',
         eTag: response.headers.etag?.replace(/"/g, ''), // Remove quotes from ETag
+        path: pageData.path,
+        gitItemPath: pageData.gitItemPath,
+        id: pageData.id,
       };
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -268,7 +324,8 @@ export class WikiClient {
         // Handle 404 Not Found
         if (status === 404) {
           throw new AzureDevOpsResourceNotFoundError(
-            `Wiki page not found: ${pagePath} in wiki ${wikiId}`,
+            `Wiki page not found: ${pagePath} (normalized to: ${normalizedPath}) in wiki ${wikiId}. ` +
+              'Make sure the path follows wiki path rules: no .md extension, spaces instead of hyphens in filenames.',
           );
         }
 
@@ -430,7 +487,7 @@ export class WikiClient {
     // First get the current page version
     let currentETag;
     try {
-      const currentPage = await this.getPage(project, wikiId, pagePath);
+      const currentPage = await this.getPage(project, wikiId, pagePath, false);
       currentETag = currentPage.eTag;
     } catch (error) {
       if (error instanceof AzureDevOpsResourceNotFoundError) {
@@ -542,14 +599,39 @@ export class WikiClient {
   }
 
   /**
-   * Lists wiki pages from a wiki using the Pages Batch API
+   * Maps raw page data to WikiPageSummary interface
+   * @param page - Raw page data from API
+   * @returns WikiPageSummary object
+   */
+  private mapPageData(page: any): WikiPageSummary {
+    return {
+      id: page.id,
+      path: page.path,
+      url: page.url,
+      order: page.order,
+      remoteUrl: page.remoteUrl,
+      gitItemPath: page.gitItemPath,
+      isParentPage: page.isParentPage,
+      content: page.content,
+    };
+  }
+
+  /**
+   * Lists wiki pages from a wiki using the Pages API
    * @param projectId - Project ID or name
    * @param wikiId - Wiki ID or name
+   * @param options - Optional parameters for listing
    * @returns Array of wiki page summaries sorted by order then path
    */
   async listWikiPages(
     projectId: string,
     wikiId: string,
+    options?: {
+      path?: string;
+      recursionLevel?: 'oneLevel' | 'full';
+      includeContent?: boolean;
+      versionDescriptor?: string;
+    },
   ): Promise<WikiPageSummary[]> {
     // Use the default project if not provided
     const project = projectId || defaultProject;
@@ -563,12 +645,27 @@ export class WikiClient {
       // Get authorization header
       const authHeader = await getAuthorizationHeader();
 
+      // Build query parameters based on options
+      const params: Record<string, string> = {
+        'api-version': '7.1',
+        recursionLevel: options?.recursionLevel || 'oneLevel',
+      };
+
+      if (options?.path) {
+        params.path = encodeURIComponent(options.path).replace(/%2F/g, '/');
+      }
+
+      if (options?.includeContent !== undefined) {
+        params.includeContent = options.includeContent.toString();
+      }
+
+      if (options?.versionDescriptor) {
+        params['versionDescriptor.version'] = options.versionDescriptor;
+      }
+
       // Make a GET request to list pages with correct API version
       const response = await axios.get(url, {
-        params: {
-          'api-version': '5.0',
-          recursionLevel: 'Full',
-        },
+        params,
         headers: {
           Authorization: authHeader,
           'Content-Type': 'application/json',
@@ -578,10 +675,10 @@ export class WikiClient {
       // Handle the response format
       if (response.data && Array.isArray(response.data)) {
         // Azure DevOps Cloud format - flat array
-        allPages.push(...response.data);
+        allPages.push(...response.data.map(this.mapPageData));
       } else if (response.data.value && Array.isArray(response.data.value)) {
         // Azure DevOps Cloud paged format
-        allPages.push(...response.data.value);
+        allPages.push(...response.data.value.map(this.mapPageData));
       } else if (response.data && response.data.subPages) {
         // TFS on-premises format - hierarchical structure
         // Extract all pages recursively from the hierarchy
@@ -606,6 +703,12 @@ export class WikiClient {
               path: page.path,
               url: page.url,
               order: page.order,
+              remoteUrl: page.remoteUrl,
+              gitItemPath: page.gitItemPath,
+              isParentPage:
+                page.isParentPage ||
+                (page.subPages && page.subPages.length > 0),
+              content: page.content,
             });
           }
 
@@ -670,6 +773,73 @@ export class WikiClient {
       // Handle network errors
       throw new AzureDevOpsError(
         `Network error when listing wiki pages: ${axiosError.message}`,
+      );
+    }
+  }
+
+  /**
+   * Lists all wikis in a project
+   * @param projectId - Project ID or name
+   * @returns Array of wiki metadata
+   */
+  async listWikis(projectId: string) {
+    // Use the default project if not provided
+    const project = projectId || defaultProject;
+
+    // Construct the URL to list wikis in the project
+    const url = `${this.baseUrl}/${project}/_apis/wiki/wikis`;
+
+    try {
+      // Get authorization header
+      const authHeader = await getAuthorizationHeader();
+
+      // Make the API request
+      const response = await axios.get(url, {
+        params: {
+          'api-version': '7.1',
+        },
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Return the wikis from the response
+      return response.data.value || [];
+    } catch (error) {
+      const axiosError = error as AxiosError;
+
+      // Handle specific error cases
+      if (axiosError.response) {
+        const status = axiosError.response.status;
+        const errorMessage =
+          typeof axiosError.response.data === 'object' &&
+          axiosError.response.data
+            ? (axiosError.response.data as AzureDevOpsApiErrorResponse)
+                .message || axiosError.message
+            : axiosError.message;
+
+        // Handle 404 Not Found - project not found or no wikis
+        if (status === 404) {
+          throw new AzureDevOpsResourceNotFoundError(
+            `Project not found or no wiki access: ${projectId}`,
+          );
+        }
+
+        // Handle 401 Unauthorized or 403 Forbidden
+        if (status === 401 || status === 403) {
+          throw new AzureDevOpsPermissionError(
+            `Permission denied to list wikis in project: ${projectId}`,
+          );
+        }
+
+        // Handle other error statuses
+        throw new AzureDevOpsError(`Failed to list wikis: ${errorMessage}`);
+      }
+
+      // Handle network errors
+      throw new AzureDevOpsError(
+        `Network error when listing wikis: ${axiosError.message}`,
       );
     }
   }

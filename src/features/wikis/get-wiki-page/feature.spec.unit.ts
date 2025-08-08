@@ -18,13 +18,19 @@ const mockGetPage = jest.fn();
 
 describe('getWikiPage unit', () => {
   const mockWikiPageContent = 'Wiki page content text';
+  const mockPageData = {
+    content: mockWikiPageContent,
+    path: '/Home',
+    id: 123,
+    gitItemPath: '/Home.md',
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetPage.mockResolvedValue({ content: mockWikiPageContent });
+    mockGetPage.mockResolvedValue(mockPageData);
   });
 
-  it('should return wiki page content as text', async () => {
+  it('should return wiki page content as structured JSON', async () => {
     // Arrange
     const options: GetWikiPageOptions = {
       organizationId: 'testOrg',
@@ -36,8 +42,8 @@ describe('getWikiPage unit', () => {
     // Act
     const result = await getWikiPage(options);
 
-    // Assert
-    expect(result).toBe(mockWikiPageContent);
+    // Assert - The result should be JSON string of the page data
+    expect(JSON.parse(result)).toEqual(mockPageData);
     expect(azureDevOpsClient.getWikiClient).toHaveBeenCalledWith({
       organizationId: 'testOrg',
     });
@@ -45,16 +51,18 @@ describe('getWikiPage unit', () => {
       'testProject',
       'testWiki',
       '/Home',
+      true, // includeContent defaults to true
     );
   });
 
-  it('should properly handle wiki page path', async () => {
+  it('should properly handle wiki page path and includeContent parameter', async () => {
     // Arrange
     const options: GetWikiPageOptions = {
       organizationId: 'testOrg',
       projectId: 'testProject',
       wikiId: 'testWiki',
       pagePath: '/Path with spaces/And special chars $&+,/:;=?@',
+      includeContent: false,
     };
 
     // Act
@@ -65,6 +73,7 @@ describe('getWikiPage unit', () => {
       'testProject',
       'testWiki',
       '/Path with spaces/And special chars $&+,/:;=?@',
+      false, // includeContent explicitly set to false
     );
   });
 

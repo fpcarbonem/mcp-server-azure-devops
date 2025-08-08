@@ -13,7 +13,8 @@ import { CreateWikiPageSchema } from './create-wiki-page/schema';
 export const wikisTools: ToolDefinition[] = [
   {
     name: 'get_wikis',
-    description: 'Get details of wikis in a project',
+    description:
+      'List all wikis available in a project. Returns wiki metadata including id, name, type, and versions.',
     inputSchema: zodToJsonSchema(GetWikisSchema),
   },
   {
@@ -33,7 +34,8 @@ export const wikisTools: ToolDefinition[] = [
   },
   {
     name: 'list_wiki_pages',
-    description: 'List pages within an Azure DevOps wiki',
+    description:
+      'List pages within an Azure DevOps wiki. Supports filtering by path, recursion level, and optional content inclusion.',
     inputSchema: zodToJsonSchema(ListWikiPagesSchema),
   },
   {
