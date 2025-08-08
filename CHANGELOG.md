@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.55](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.54...mcp-server-azure-devops-v0.1.55) (2025-08-08)
+
+
+### Bug Fixes
+
+* **version:** avoid ESM JSON import by requiring package.json for VERSION to support CJS outputs ([435c802](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/435c8020162e4c7147561f6d97d20598ea7bce4a))
+
 ## [0.1.54](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.53...mcp-server-azure-devops-v0.1.54) (2025-08-08)
 
 
