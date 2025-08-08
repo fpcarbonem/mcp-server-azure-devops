@@ -1,9 +1,6 @@
 import { listWikiPages, WikiPageSummary } from './feature';
 import { getWikis } from '../get-wikis/feature';
-import {
-  getTestConnection,
-  shouldSkipIntegrationTest,
-} from '@/shared/test/test-helpers';
+import { shouldSkipIntegrationTest } from '@/shared/test/test-helpers';
 import { getOrgNameFromUrl } from '@/utils/environment';
 import { AzureDevOpsError } from '@/shared/errors/azure-devops-errors';
 
@@ -45,43 +42,46 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // List wiki pages
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
+
       // Verify the result structure
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveProperty('value');
+      expect(result).toHaveProperty('count');
+      expect(Array.isArray(result.value)).toBe(true);
 
       // If pages exist, verify their structure matches WikiPageSummary interface
-      if (result.length > 0) {
-        const page = result[0];
+      if (result.value.length > 0) {
+        const page = result.value[0];
         expect(page).toHaveProperty('id');
         expect(page).toHaveProperty('path');
         expect(page).toHaveProperty('url');
@@ -103,35 +103,37 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // Get all pages for different wiki structures
-      const allPages = await listWikiPages({
+      const allPagesJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
+
+      // Parse JSON result
+      const allPagesResult = JSON.parse(allPagesJson);
+      const allPages = allPagesResult.value;
 
       expect(Array.isArray(allPages)).toBe(true);
 
@@ -144,7 +146,7 @@ describe('listWikiPages integration', () => {
 
         // Verify nested pages if they exist
         const nestedPages = allPages.filter(
-          (page) => page.path.includes('/') && page.path !== '/',
+          (page: any) => page.path.includes('/') && page.path !== '/',
         );
         console.log(
           `Found ${nestedPages.length} nested pages out of ${allPages.length} total pages`,
@@ -158,49 +160,51 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // Test basic page listing
-      const firstResult = await listWikiPages({
+      const firstResultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(firstResult)).toBe(true);
+      // Parse JSON result
+      const firstResult = JSON.parse(firstResultJson);
+      expect(Array.isArray(firstResult.value)).toBe(true);
 
       // Test again to ensure consistency
-      const secondResult = await listWikiPages({
+      const secondResultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(secondResult)).toBe(true);
+      // Parse JSON result
+      const secondResult = JSON.parse(secondResultJson);
+      expect(Array.isArray(secondResult.value)).toBe(true);
 
       // Results should be consistent
-      expect(secondResult.length).toBe(firstResult.length);
+      expect(secondResult.value.length).toBe(firstResult.value.length);
     });
   });
 
@@ -264,40 +268,41 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // Test with a path that likely doesn't exist
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
+
       // Should return an array (may be empty or contain all pages depending on API behavior)
-      expect(Array.isArray(result)).toBe(true);
+      expect(Array.isArray(result.value)).toBe(true);
       // Note: Azure DevOps API may return all pages when path doesn't match
-      console.log(`Path filter test returned ${result.length} pages`);
+      console.log(`Path filter test returned ${result.value.length} pages`);
     });
 
     test('should handle deeply nested paths', async () => {
@@ -306,37 +311,38 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // Test with default parameters
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(result)).toBe(true);
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
+
+      expect(Array.isArray(result.value)).toBe(true);
       // Should not throw error with basic parameters
     });
 
@@ -346,46 +352,48 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       // Test basic page listing
-      const firstResult = await listWikiPages({
+      const firstResultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(firstResult)).toBe(true);
+      // Parse JSON result
+      const firstResult = JSON.parse(firstResultJson);
+      expect(Array.isArray(firstResult.value)).toBe(true);
 
       // Test again for consistency
-      const secondResult = await listWikiPages({
+      const secondResultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(secondResult)).toBe(true);
+      // Parse JSON result
+      const secondResult = JSON.parse(secondResultJson);
+      expect(Array.isArray(secondResult.value)).toBe(true);
     });
   });
 
@@ -396,39 +404,39 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
       });
 
-      expect(Array.isArray(result)).toBe(true);
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
+      expect(Array.isArray(result.value)).toBe(true);
 
       // Validate each page in the result
-      result.forEach((page: WikiPageSummary) => {
+      result.value.forEach((page: WikiPageSummary) => {
         // Required fields
         expect(page).toHaveProperty('id');
         expect(page).toHaveProperty('path');
@@ -463,32 +471,30 @@ describe('listWikiPages integration', () => {
         return;
       }
 
-      // Get a real connection using environment variables
-      const connection = await getTestConnection();
-      if (!connection) {
-        throw new Error(
-          'Connection should be available when test is not skipped',
-        );
-      }
+      // First get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
 
-      // First get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('Skipping test: No wikis available in the project');
         return;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         throw new Error('Wiki name is undefined');
       }
 
       const startTime = Date.now();
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId,
         projectId: projectName,
         wikiId: wiki.name,
@@ -497,12 +503,14 @@ describe('listWikiPages integration', () => {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      expect(Array.isArray(result)).toBe(true);
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
+      expect(Array.isArray(result.value)).toBe(true);
 
       // Performance check - should complete within reasonable time (30 seconds)
       expect(duration).toBeLessThan(30000);
 
-      console.log(`Retrieved ${result.length} pages in ${duration}ms`);
+      console.log(`Retrieved ${result.value.length} pages in ${duration}ms`);
     });
   });
 });

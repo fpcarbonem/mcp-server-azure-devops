@@ -143,9 +143,17 @@ describe('createWikiPage Feature', () => {
   it('should return the data from the response on success', async () => {
     const expectedResponse = { id: '123', path: '/', content: 'Hello world' };
     mockPut.mockResolvedValue({ data: expectedResponse });
-    const result = await createWikiPage(defaultParams, client as any);
+    const resultJson = await createWikiPage(defaultParams, client as any);
 
-    expect(result).toEqual(expectedResponse);
+    // Parse JSON result
+    const result = JSON.parse(resultJson);
+
+    // Verify JSON structure
+    expect(result).toHaveProperty('data');
+    expect(result).toHaveProperty('metadata');
+    expect(result.data).toEqual(expectedResponse);
+    expect(result.metadata.operation).toBe('create_wiki_page');
+    expect(result.metadata.timestamp).toBeDefined();
   });
 
   // Skip this test for now as it requires complex mocking of environment variables

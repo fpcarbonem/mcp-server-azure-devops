@@ -57,11 +57,14 @@ describe('listWikiPages unit', () => {
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
       // Call the function
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
+
+      // Parse JSON result
+      const result = JSON.parse(resultJson);
 
       // Assertions
       expect(mockGetWikiClient).toHaveBeenCalledWith({
@@ -70,9 +73,13 @@ describe('listWikiPages unit', () => {
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
-      expect(result).toEqual(mockPages);
-      expect(result.length).toBe(2);
+      expect(result).toEqual({
+        count: 2,
+        value: mockPages,
+      });
+      expect(result.value.length).toBe(2);
     });
 
     test('should handle basic listing without parameters', async () => {
@@ -87,17 +94,23 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
+      const result = JSON.parse(resultJson);
+
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
-      expect(result).toEqual(mockPages);
+      expect(result).toEqual({
+        count: 1,
+        value: mockPages,
+      });
     });
 
     test('should handle nested pages correctly', async () => {
@@ -112,17 +125,23 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
+      const result = JSON.parse(resultJson);
+
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
-      expect(result).toEqual(mockPages);
+      expect(result).toEqual({
+        count: 1,
+        value: mockPages,
+      });
     });
 
     test('should handle empty wiki correctly', async () => {
@@ -130,30 +149,40 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
+      const result = JSON.parse(resultJson);
+
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
-      expect(result).toEqual(mockPages);
+      expect(result).toEqual({
+        count: 1,
+        value: mockPages,
+      });
     });
 
     test('should return empty array when no pages found', async () => {
       mockWikiClient.listWikiPages.mockResolvedValue([]);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'empty-wiki',
       });
 
-      expect(result).toEqual([]);
-      expect(Array.isArray(result)).toBe(true);
+      const result = JSON.parse(resultJson);
+      expect(result).toEqual({
+        count: 0,
+        value: [],
+      });
+      expect(Array.isArray(result.value)).toBe(true);
     });
 
     test('should use default organization and project when not provided', async () => {
@@ -168,14 +197,19 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         wikiId: 'test-wiki',
       });
+
+      const result = JSON.parse(resultJson);
 
       expect(mockGetWikiClient).toHaveBeenCalledWith({
         organizationId: 'azure-devops-mcp-testing', // Uses default from environment
       });
-      expect(result).toEqual(mockPages);
+      expect(result).toEqual({
+        count: 1,
+        value: mockPages,
+      });
     });
   });
 
@@ -291,14 +325,19 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(malformedPages as any);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
+      const result = JSON.parse(resultJson);
+
       // Should still return the data as-is (transformation happens in client)
-      expect(result).toEqual(malformedPages);
+      expect(result).toEqual({
+        count: 1,
+        value: malformedPages,
+      });
     });
 
     test('should handle null/undefined response from client', async () => {
@@ -327,14 +366,19 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(largeMockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'large-wiki',
       });
 
-      expect(result).toEqual(largeMockPages);
-      expect(result.length).toBe(10000);
+      const result = JSON.parse(resultJson);
+
+      expect(result).toEqual({
+        count: 10000,
+        value: largeMockPages,
+      });
+      expect(result.value.length).toBe(10000);
     });
 
     test('should handle pages with special characters in paths', async () => {
@@ -361,13 +405,18 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(specialCharPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'special-wiki',
       });
 
-      expect(result).toEqual(specialCharPages);
+      const result = JSON.parse(resultJson);
+
+      expect(result).toEqual({
+        count: 3,
+        value: specialCharPages,
+      });
     });
 
     test('should handle pages with missing optional order field', async () => {
@@ -388,15 +437,20 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(pagesWithoutOrder);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
-      expect(result).toEqual(pagesWithoutOrder);
-      expect(result[0].order).toBeUndefined();
-      expect(result[1].order).toBe(5);
+      const result = JSON.parse(resultJson);
+
+      expect(result).toEqual({
+        count: 2,
+        value: pagesWithoutOrder,
+      });
+      expect(result.value[0].order).toBeUndefined();
+      expect(result.value[1].order).toBe(5);
     });
   });
 
@@ -414,6 +468,7 @@ describe('listWikiPages unit', () => {
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
 
       await listWikiPages({
@@ -425,6 +480,7 @@ describe('listWikiPages unit', () => {
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'test-project',
         'test-wiki',
+        {},
       );
     });
 
@@ -444,6 +500,7 @@ describe('listWikiPages unit', () => {
       expect(mockWikiClient.listWikiPages).toHaveBeenCalledWith(
         'eShopOnWeb', // Empty string gets overridden by default project
         'test-wiki',
+        {},
       );
     });
   });
@@ -461,13 +518,15 @@ describe('listWikiPages unit', () => {
 
       mockWikiClient.listWikiPages.mockResolvedValue(mockPages);
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
-      expect(result[0]).toEqual({
+      const result = JSON.parse(resultJson);
+
+      expect(result.value[0]).toEqual({
         id: 42,
         path: '/test-page',
         url: 'https://dev.azure.com/org/project/_wiki/wikis/wiki1/42',
@@ -501,15 +560,20 @@ describe('listWikiPages unit', () => {
         mixedPages as WikiPageSummary[],
       );
 
-      const result = await listWikiPages({
+      const resultJson = await listWikiPages({
         organizationId: 'test-org',
         projectId: 'test-project',
         wikiId: 'test-wiki',
       });
 
-      expect(result).toEqual(mixedPages);
-      expect(result[1].order).toBeUndefined();
-      expect(result[2].order).toBe(0);
+      const result = JSON.parse(resultJson);
+
+      expect(result).toEqual({
+        count: 3,
+        value: mixedPages,
+      });
+      expect(result.value[1].order).toBeUndefined();
+      expect(result.value[2].order).toBe(0);
     });
   });
 });

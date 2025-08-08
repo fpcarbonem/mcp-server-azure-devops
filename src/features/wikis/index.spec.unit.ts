@@ -70,11 +70,14 @@ describe('Wikis Request Handlers', () => {
 
   describe('handleWikisRequest', () => {
     it('should handle get_wikis request', async () => {
-      const mockWikis = [
-        { id: 'wiki1', name: 'Wiki 1' },
-        { id: 'wiki2', name: 'Wiki 2' },
-      ];
-      (getWikis as jest.Mock).mockResolvedValue(mockWikis);
+      const mockWikisResponse = JSON.stringify({
+        count: 2,
+        value: [
+          { id: 'wiki1', name: 'Wiki 1' },
+          { id: 'wiki2', name: 'Wiki 2' },
+        ],
+      });
+      (getWikis as jest.Mock).mockResolvedValue(mockWikisResponse);
 
       const request = {
         params: {
@@ -93,18 +96,20 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(mockWikis);
-      expect(getWikis).toHaveBeenCalledWith(
-        mockConnection,
-        expect.objectContaining({
-          projectId: 'project1',
-        }),
-      );
+      expect(response.content[0].text).toBe(mockWikisResponse);
+      expect(getWikis).toHaveBeenCalledWith({
+        organizationId: undefined, // defaultOrg is undefined in test environment
+        projectId: 'project1',
+      });
     });
 
     it('should handle get_wiki_page request', async () => {
-      const mockWikiContent = '# Wiki Page\n\nThis is a wiki page content.';
-      (getWikiPage as jest.Mock).mockResolvedValue(mockWikiContent);
+      const mockWikiPageResponse = JSON.stringify({
+        content: '# Wiki Page\n\nThis is a wiki page content.',
+        path: '/Home',
+        id: 123,
+      });
+      (getWikiPage as jest.Mock).mockResolvedValue(mockWikiPageResponse);
 
       const request = {
         params: {
@@ -127,19 +132,25 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].text as string).toEqual(mockWikiContent);
-      expect(getWikiPage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          projectId: 'project1',
-          wikiId: 'wiki1',
-          pagePath: '/Home',
-        }),
-      );
+      expect(response.content[0].text).toBe(mockWikiPageResponse);
+      expect(getWikiPage).toHaveBeenCalledWith({
+        organizationId: undefined,
+        projectId: 'project1',
+        wikiId: 'wiki1',
+        pagePath: '/Home',
+        includeContent: undefined,
+      });
     });
 
     it('should handle create_wiki request', async () => {
-      const mockWiki = { id: 'wiki1', name: 'New Wiki' };
-      (createWiki as jest.Mock).mockResolvedValue(mockWiki);
+      const mockWikiResponse = JSON.stringify({
+        data: { id: 'wiki1', name: 'New Wiki' },
+        metadata: {
+          operation: 'create_wiki',
+          timestamp: '2023-01-01T00:00:00.000Z',
+        },
+      });
+      (createWiki as jest.Mock).mockResolvedValue(mockWikiResponse);
 
       const request = {
         params: {
@@ -163,10 +174,11 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(mockWiki);
+      expect(response.content[0].text).toBe(mockWikiResponse);
       expect(createWiki).toHaveBeenCalledWith(
         mockConnection,
         expect.objectContaining({
+          organizationId: undefined,
           projectId: 'project1',
           name: 'New Wiki',
           type: WikiType.ProjectWiki,
@@ -175,8 +187,14 @@ describe('Wikis Request Handlers', () => {
     });
 
     it('should handle update_wiki_page request', async () => {
-      const mockUpdateResult = { id: 'page1', content: 'Updated content' };
-      (updateWikiPage as jest.Mock).mockResolvedValue(mockUpdateResult);
+      const mockUpdateResponse = JSON.stringify({
+        data: { id: 'page1', content: 'Updated content' },
+        metadata: {
+          operation: 'update_wiki_page',
+          timestamp: '2023-01-01T00:00:00.000Z',
+        },
+      });
+      (updateWikiPage as jest.Mock).mockResolvedValue(mockUpdateResponse);
 
       const request = {
         params: {
@@ -203,18 +221,15 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockUpdateResult,
-      );
-      expect(updateWikiPage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          projectId: 'project1',
-          wikiId: 'wiki1',
-          pagePath: '/Home',
-          content: 'Updated content',
-          comment: 'Update home page',
-        }),
-      );
+      expect(response.content[0].text).toBe(mockUpdateResponse);
+      expect(updateWikiPage).toHaveBeenCalledWith({
+        organizationId: undefined,
+        projectId: 'project1',
+        wikiId: 'wiki1',
+        pagePath: '/Home',
+        content: 'Updated content',
+        comment: 'Update home page',
+      });
     });
 
     it('should throw error for unknown tool', async () => {

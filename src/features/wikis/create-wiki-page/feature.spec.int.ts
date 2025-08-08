@@ -1,12 +1,8 @@
-import { WebApi } from 'azure-devops-node-api';
 import { createWikiPage } from './feature';
 import { CreateWikiPageSchema } from './schema';
 import { getWikiPage } from '../get-wiki-page/feature';
 import { getWikis } from '../get-wikis/feature';
-import {
-  getTestConnection,
-  shouldSkipIntegrationTest,
-} from '@/shared/test/test-helpers';
+import { shouldSkipIntegrationTest } from '@/shared/test/test-helpers';
 import { getOrgNameFromUrl } from '@/utils/environment';
 import { AzureDevOpsError } from '@/shared/errors/azure-devops-errors';
 import { z } from 'zod';
@@ -16,7 +12,6 @@ process.env.AZURE_DEVOPS_DEFAULT_PROJECT =
   process.env.AZURE_DEVOPS_DEFAULT_PROJECT || 'default-project';
 
 describe('createWikiPage Integration Tests', () => {
-  let connection: WebApi | null = null;
   let projectName: string;
   let orgUrl: string;
   let organizationId: string;
@@ -45,27 +40,28 @@ describe('createWikiPage Integration Tests', () => {
     }
     orgUrl = envOrgUrl;
     organizationId = getOrgNameFromUrl(orgUrl);
-
-    // Get a real connection using environment variables
-    connection = await getTestConnection();
   });
 
   // Helper function to get a valid wiki ID
   async function getValidWikiId(): Promise<string | null> {
-    if (!connection) return null;
-
     try {
-      // Get available wikis
-      const wikis = await getWikis(connection, { projectId: projectName });
+      // Get available wikis using new API
+      const wikisJson = await getWikis({
+        organizationId,
+        projectId: projectName,
+      });
+
+      // Parse JSON result
+      const wikisResult = JSON.parse(wikisJson);
 
       // Skip if no wikis are available
-      if (wikis.length === 0) {
+      if (wikisResult.value.length === 0) {
         console.log('No wikis available in the project');
         return null;
       }
 
       // Use the first available wiki
-      const wiki = wikis[0];
+      const wiki = wikisResult.value[0];
       if (!wiki.name) {
         console.log('Wiki name is undefined');
         return null;
@@ -79,17 +75,10 @@ describe('createWikiPage Integration Tests', () => {
   }
 
   test('should create a new wiki page at the root', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       console.log('Skipping test due to missing connection');
       return;
-    }
-
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
     }
 
     // Get a valid wiki ID
@@ -109,24 +98,29 @@ describe('createWikiPage Integration Tests', () => {
 
     try {
       // Create the wiki page
-      const createdPage = await createWikiPage(params);
+      const createdPageJson = await createWikiPage(params);
+      const createdPage = JSON.parse(createdPageJson);
 
       // Verify the result
       expect(createdPage).toBeDefined();
-      expect(createdPage.path).toBe(testPagePath);
-      expect(createdPage.content).toBe(params.content);
+      expect(createdPage.data).toBeDefined();
+      expect(createdPage.data.path).toBe(testPagePath);
+      expect(createdPage.data.content).toBe(params.content);
+      expect(createdPage.metadata).toBeDefined();
+      expect(createdPage.metadata.operation).toBe('create_wiki_page');
 
       // Verify by fetching the page
-      const fetchedPage = await getWikiPage({
+      const fetchedPageJson = await getWikiPage({
         organizationId,
         projectId: projectName,
         wikiId,
         pagePath: testPagePath,
       });
 
+      // Parse fetched page JSON
+      const fetchedPage = JSON.parse(fetchedPageJson);
       expect(fetchedPage).toBeDefined();
-      expect(typeof fetchedPage).toBe('string');
-      expect(fetchedPage).toContain(params.content);
+      expect(fetchedPage.content).toContain(params.content);
     } catch (error) {
       console.error('Error in test:', error);
       throw error;
@@ -134,17 +128,10 @@ describe('createWikiPage Integration Tests', () => {
   });
 
   test('should create a new wiki sub-page', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       console.log('Skipping test due to missing connection');
       return;
-    }
-
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
     }
 
     // Get a valid wiki ID
@@ -176,24 +163,27 @@ describe('createWikiPage Integration Tests', () => {
         content: 'This is content for the integration test sub-page.',
       };
 
-      const createdSubPage = await createWikiPage(subPageParams);
+      const createdSubPageJson = await createWikiPage(subPageParams);
+      const createdSubPage = JSON.parse(createdSubPageJson);
 
       // Verify the result
       expect(createdSubPage).toBeDefined();
-      expect(createdSubPage.path).toBe(testPagePathSub);
-      expect(createdSubPage.content).toBe(subPageParams.content);
+      expect(createdSubPage.data).toBeDefined();
+      expect(createdSubPage.data.path).toBe(testPagePathSub);
+      expect(createdSubPage.data.content).toBe(subPageParams.content);
 
       // Verify by fetching the sub-page
-      const fetchedSubPage = await getWikiPage({
+      const fetchedSubPageJson = await getWikiPage({
         organizationId,
         projectId: projectName,
         wikiId,
         pagePath: testPagePathSub,
       });
 
+      // Parse fetched page JSON
+      const fetchedSubPage = JSON.parse(fetchedSubPageJson);
       expect(fetchedSubPage).toBeDefined();
-      expect(typeof fetchedSubPage).toBe('string');
-      expect(fetchedSubPage).toContain(subPageParams.content);
+      expect(fetchedSubPage.content).toContain(subPageParams.content);
     } catch (error) {
       console.error('Error in test:', error);
       throw error;
@@ -201,17 +191,10 @@ describe('createWikiPage Integration Tests', () => {
   });
 
   test('should update an existing wiki page if path already exists', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       console.log('Skipping test due to missing connection');
       return;
-    }
-
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
     }
 
     // Get a valid wiki ID
@@ -239,24 +222,27 @@ describe('createWikiPage Integration Tests', () => {
         content: 'Updated content for the page.',
       };
 
-      const updatedPage = await createWikiPage(updatedParams);
+      const updatedPageJson = await createWikiPage(updatedParams);
+      const updatedPage = JSON.parse(updatedPageJson);
 
       // Verify the result
       expect(updatedPage).toBeDefined();
-      expect(updatedPage.path).toBe(testPagePath);
-      expect(updatedPage.content).toBe(updatedParams.content);
+      expect(updatedPage.data).toBeDefined();
+      expect(updatedPage.data.path).toBe(testPagePath);
+      expect(updatedPage.data.content).toBe(updatedParams.content);
 
       // Verify by fetching the page
-      const fetchedPage = await getWikiPage({
+      const fetchedPageJson = await getWikiPage({
         organizationId,
         projectId: projectName,
         wikiId,
         pagePath: testPagePath,
       });
 
+      // Parse fetched page JSON
+      const fetchedPage = JSON.parse(fetchedPageJson);
       expect(fetchedPage).toBeDefined();
-      expect(typeof fetchedPage).toBe('string');
-      expect(fetchedPage).toContain(updatedParams.content);
+      expect(fetchedPage.content).toContain(updatedParams.content);
     } catch (error) {
       console.error('Error in test:', error);
       throw error;
@@ -264,17 +250,10 @@ describe('createWikiPage Integration Tests', () => {
   });
 
   test('should create a page with a default path if specified', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       console.log('Skipping test due to missing connection');
       return;
-    }
-
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
     }
 
     // Get a valid wiki ID
@@ -293,24 +272,27 @@ describe('createWikiPage Integration Tests', () => {
         content: 'Content for page created with default path.',
       };
 
-      const createdPage = await createWikiPage(params);
+      const createdPageJson = await createWikiPage(params);
+      const createdPage = JSON.parse(createdPageJson);
 
       // Verify the result
       expect(createdPage).toBeDefined();
-      expect(createdPage.path).toBe(testPagePathDefault);
-      expect(createdPage.content).toBe(params.content);
+      expect(createdPage.data).toBeDefined();
+      expect(createdPage.data.path).toBe(testPagePathDefault);
+      expect(createdPage.data.content).toBe(params.content);
 
       // Verify by fetching the page
-      const fetchedPage = await getWikiPage({
+      const fetchedPageJson = await getWikiPage({
         organizationId,
         projectId: projectName,
         wikiId,
         pagePath: testPagePathDefault,
       });
 
+      // Parse fetched page JSON
+      const fetchedPage = JSON.parse(fetchedPageJson);
       expect(fetchedPage).toBeDefined();
-      expect(typeof fetchedPage).toBe('string');
-      expect(fetchedPage).toContain(params.content);
+      expect(fetchedPage.content).toContain(params.content);
     } catch (error) {
       console.error('Error in test:', error);
       throw error;
@@ -318,17 +300,10 @@ describe('createWikiPage Integration Tests', () => {
   });
 
   test('should include comment in the wiki page creation when provided', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       console.log('Skipping test due to missing connection');
       return;
-    }
-
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
     }
 
     // Get a valid wiki ID
@@ -348,24 +323,27 @@ describe('createWikiPage Integration Tests', () => {
         comment: 'This is a test comment for the wiki page creation',
       };
 
-      const createdPage = await createWikiPage(params);
+      const createdPageJson = await createWikiPage(params);
+      const createdPage = JSON.parse(createdPageJson);
 
       // Verify the result
       expect(createdPage).toBeDefined();
-      expect(createdPage.path).toBe(testPagePathComment);
-      expect(createdPage.content).toBe(params.content);
+      expect(createdPage.data).toBeDefined();
+      expect(createdPage.data.path).toBe(testPagePathComment);
+      expect(createdPage.data.content).toBe(params.content);
 
       // Verify by fetching the page
-      const fetchedPage = await getWikiPage({
+      const fetchedPageJson = await getWikiPage({
         organizationId,
         projectId: projectName,
         wikiId,
         pagePath: testPagePathComment,
       });
 
+      // Parse fetched page JSON
+      const fetchedPage = JSON.parse(fetchedPageJson);
       expect(fetchedPage).toBeDefined();
-      expect(typeof fetchedPage).toBe('string');
-      expect(fetchedPage).toContain(params.content);
+      expect(fetchedPage.content).toContain(params.content);
 
       // Note: The API might not return the comment in the response
       // This test primarily verifies that including a comment doesn't break the API call

@@ -1,45 +1,48 @@
-import { WebApi } from 'azure-devops-node-api';
 import { getWikis } from './feature';
-import {
-  getTestConnection,
-  shouldSkipIntegrationTest,
-} from '@/shared/test/test-helpers';
+import { shouldSkipIntegrationTest } from '@/shared/test/test-helpers';
+import { getOrgNameFromUrl } from '@/utils/environment';
 
 describe('getWikis integration', () => {
-  let connection: WebApi | null = null;
   let projectName: string;
+  let organizationId: string;
 
   beforeAll(async () => {
-    // Get a real connection using environment variables
-    connection = await getTestConnection();
+    // Get project name from environment variables
     projectName = process.env.AZURE_DEVOPS_DEFAULT_PROJECT || 'DefaultProject';
+
+    // Get organization ID from URL
+    const orgUrl =
+      process.env.AZURE_DEVOPS_ORG_URL || 'https://example.visualstudio.com';
+    organizationId = getOrgNameFromUrl(orgUrl);
   });
 
   test('should retrieve wikis from Azure DevOps', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       return;
     }
 
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
-    }
-
-    // Get the wikis
-    const result = await getWikis(connection, {
+    // Get the wikis using new API
+    const resultJson = await getWikis({
+      organizationId,
       projectId: projectName,
     });
 
-    // Verify the result
+    // Parse JSON result
+    const result = JSON.parse(resultJson);
+
+    // Verify the result structure
     expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-    if (result.length > 0) {
-      expect(result[0].name).toBeDefined();
-      expect(result[0].id).toBeDefined();
-      expect(result[0].type).toBeDefined();
+    expect(result).toHaveProperty('value');
+    expect(result).toHaveProperty('count');
+    expect(Array.isArray(result.value)).toBe(true);
+
+    // If wikis exist, verify their structure
+    if (result.value.length > 0) {
+      const wiki = result.value[0];
+      expect(wiki.name).toBeDefined();
+      expect(wiki.id).toBeDefined();
+      expect(wiki.type).toBeDefined();
     }
   });
 });

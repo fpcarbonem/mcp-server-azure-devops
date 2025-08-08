@@ -45,10 +45,13 @@ describe('createWiki unit', () => {
     mockWikiClient.createWiki.mockResolvedValue(mockWiki);
 
     // Call the function
-    const result = await createWiki(mockConnection, {
+    const resultJson = await createWiki(mockConnection, {
       name: 'Project Wiki',
       projectId: 'project1',
     });
+
+    // Parse JSON result
+    const result = JSON.parse(resultJson);
 
     // Assertions
     expect(getWikiClient).toHaveBeenCalledWith({ organizationId: undefined });
@@ -57,7 +60,13 @@ describe('createWiki unit', () => {
       projectId: 'project1',
       type: WikiType.ProjectWiki,
     });
-    expect(result).toEqual(mockWiki);
+
+    // Verify JSON structure
+    expect(result).toHaveProperty('data');
+    expect(result).toHaveProperty('metadata');
+    expect(result.data).toEqual(mockWiki);
+    expect(result.metadata.operation).toBe('create_wiki');
+    expect(result.metadata.timestamp).toBeDefined();
   });
 
   test('should create a code wiki', async () => {
@@ -77,13 +86,16 @@ describe('createWiki unit', () => {
     mockWikiClient.createWiki.mockResolvedValue(mockWiki);
 
     // Call the function
-    const result = await createWiki(mockConnection, {
+    const resultJson = await createWiki(mockConnection, {
       name: 'Code Wiki',
       projectId: 'project1',
       type: WikiType.CodeWiki,
       repositoryId: 'repo1',
       mappedPath: '/docs',
     });
+
+    // Parse JSON result
+    const result = JSON.parse(resultJson);
 
     // Assertions
     expect(getWikiClient).toHaveBeenCalledWith({ organizationId: undefined });
@@ -98,7 +110,13 @@ describe('createWiki unit', () => {
         versionType: 'branch' as const,
       },
     });
-    expect(result).toEqual(mockWiki);
+
+    // Verify JSON structure
+    expect(result).toHaveProperty('data');
+    expect(result).toHaveProperty('metadata');
+    expect(result.data).toEqual(mockWiki);
+    expect(result.metadata.operation).toBe('create_wiki');
+    expect(result.metadata.timestamp).toBeDefined();
   });
 
   test('should throw validation error when repository ID is missing for code wiki', async () => {

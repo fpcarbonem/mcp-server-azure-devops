@@ -1,17 +1,12 @@
-import { WebApi } from 'azure-devops-node-api';
 import { getWikiPage } from './feature';
 import { getWikis } from '../get-wikis/feature';
-import {
-  getTestConnection,
-  shouldSkipIntegrationTest,
-} from '@/shared/test/test-helpers';
+import { shouldSkipIntegrationTest } from '@/shared/test/test-helpers';
 import { getOrgNameFromUrl } from '@/utils/environment';
 
 process.env.AZURE_DEVOPS_DEFAULT_PROJECT =
   process.env.AZURE_DEVOPS_DEFAULT_PROJECT || 'default-project';
 
 describe('getWikiPage integration', () => {
-  let connection: WebApi | null = null;
   let projectName: string;
   let orgUrl: string;
 
@@ -19,8 +14,6 @@ describe('getWikiPage integration', () => {
     // Mock the required environment variable for testing
     process.env.AZURE_DEVOPS_ORG_URL =
       process.env.AZURE_DEVOPS_ORG_URL || 'https://example.visualstudio.com';
-    // Get a real connection using environment variables
-    connection = await getTestConnection();
 
     // Get and validate required environment variables
     const envProjectName = process.env.AZURE_DEVOPS_DEFAULT_PROJECT;
@@ -39,29 +32,28 @@ describe('getWikiPage integration', () => {
   });
 
   test('should retrieve a wiki page', async () => {
-    // Skip if no connection is available
+    // Skip if integration tests are disabled
     if (shouldSkipIntegrationTest()) {
       return;
     }
 
-    // This connection must be available if we didn't skip
-    if (!connection) {
-      throw new Error(
-        'Connection should be available when test is not skipped',
-      );
-    }
+    // First get available wikis using new API
+    const wikisJson = await getWikis({
+      organizationId: getOrgNameFromUrl(orgUrl),
+      projectId: projectName,
+    });
 
-    // First get available wikis
-    const wikis = await getWikis(connection, { projectId: projectName });
+    // Parse JSON result
+    const wikisResult = JSON.parse(wikisJson);
 
     // Skip if no wikis are available
-    if (wikis.length === 0) {
+    if (wikisResult.value.length === 0) {
       console.log('Skipping test: No wikis available in the project');
       return;
     }
 
     // Use the first available wiki
-    const wiki = wikis[0];
+    const wiki = wikisResult.value[0];
     if (!wiki.name) {
       throw new Error('Wiki name is undefined');
     }

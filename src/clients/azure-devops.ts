@@ -215,41 +215,50 @@ export class WikiClient {
 
   /**
    * Normalizes a wiki page path according to Azure DevOps wiki path rules
-   * - Removes .md extension
-   * - Converts hyphens to spaces in the final segment (filename)
-   * - Ensures path starts with /
+   * Implementation based on ready-to-ship spec:
+   * - Ensures leading /
+   * - Strips trailing .md (case insensitive)
+   * - Only for the last segment, converts - to space
    * @param path - The raw path to normalize
    * @returns The normalized wiki path
    */
   private normalizeWikiPath(path: string): string {
-    let normalizedPath = path;
+    let p = (path || '').trim();
 
-    // Ensure path starts with /
-    if (!normalizedPath.startsWith('/')) {
-      normalizedPath = '/' + normalizedPath;
+    // Ensure leading /
+    if (!p.startsWith('/')) {
+      p = '/' + p;
     }
 
-    // Remove .md extension if present
-    if (normalizedPath.endsWith('.md')) {
-      normalizedPath = normalizedPath.slice(0, -3);
-    }
+    // Strip trailing .md (case insensitive)
+    p = p.replace(/\.md$/i, '');
 
-    // Convert hyphens to spaces in the final segment only
-    const segments = normalizedPath.split('/');
-    if (segments.length > 0) {
-      const lastSegment = segments[segments.length - 1];
-      if (lastSegment) {
-        // Replace hyphens with spaces in the filename part
-        segments[segments.length - 1] = lastSegment.replace(/-/g, ' ');
-        normalizedPath = segments.join('/');
-      }
-    }
+    // Only for the last segment, convert - to space
+    const parts = p.split('/');
+    const last = parts.pop() ?? '';
+    const normalizedLast = last.replace(/-/g, ' ');
 
-    return normalizedPath;
+    return [...parts, normalizedLast].join('/') || '/';
   }
 
   /**
-   * Gets a wiki page's content
+   * Creates an alternative path for retry by toggling spaces/hyphens in the last segment
+   * @param path - The original normalized path
+   * @returns Alternative path for retry
+   */
+  private createAlternativePath(path: string): string {
+    const parts = path.split('/');
+    const last = parts.pop() ?? '';
+    // Toggle: if it has spaces, convert to hyphens; if it has hyphens, convert to spaces
+    const alternativeLast = last.includes(' ')
+      ? last.replace(/\s/g, '-')
+      : last.replace(/-/g, ' ');
+
+    return [...parts, alternativeLast].join('/');
+  }
+
+  /**
+   * Gets a wiki page's content with retry logic for path variations
    * @param projectId - Project ID or name
    * @param wikiId - Wiki ID or name
    * @param pagePath - Path of the wiki page
@@ -268,20 +277,75 @@ export class WikiClient {
     // Normalize the wiki path according to Azure DevOps wiki path rules
     const normalizedPath = this.normalizeWikiPath(pagePath);
 
-    // URL encode the path, preserving forward slashes
-    const encodedPagePath = encodeURIComponent(normalizedPath).replace(
-      /%2F/g,
-      '/',
+    console.log(
+      `[WikiClient] Getting page: ${pagePath} -> normalized: ${normalizedPath}`,
     );
 
+    // Try the primary path first
+    try {
+      return await this.fetchWikiPage(
+        project,
+        wikiId,
+        normalizedPath,
+        includeContent,
+      );
+    } catch (error) {
+      // On 404 with WikiPageNotFoundException, retry with alternative path
+      if (error instanceof AzureDevOpsResourceNotFoundError) {
+        console.log(
+          `[WikiClient] Primary path failed, trying alternative path`,
+        );
+
+        const alternativePath = this.createAlternativePath(normalizedPath);
+        console.log(`[WikiClient] Trying alternative path: ${alternativePath}`);
+
+        try {
+          return await this.fetchWikiPage(
+            project,
+            wikiId,
+            alternativePath,
+            includeContent,
+          );
+        } catch {
+          // If both attempts fail, throw the original error with both paths mentioned
+          throw new AzureDevOpsResourceNotFoundError(
+            `Wiki page not found: ${pagePath} (tried normalized: ${normalizedPath} and alternative: ${alternativePath}) in wiki ${wikiId}. ` +
+              'Make sure the path follows wiki path rules: no .md extension, spaces instead of hyphens in filenames.',
+          );
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Internal method to fetch a wiki page with the exact path
+   * @param project - Project ID or name
+   * @param wikiId - Wiki ID or name
+   * @param normalizedPath - Normalized wiki path
+   * @param includeContent - Whether to include page content
+   * @returns The wiki page content and metadata
+   */
+  private async fetchWikiPage(
+    project: string,
+    wikiId: string,
+    normalizedPath: string,
+    includeContent: boolean,
+  ) {
     // Construct the URL to get the wiki page using project name
     const url = `${this.baseUrl}/${project}/_apis/wiki/wikis/${wikiId}/pages`;
     const params: Record<string, string> = {
       'api-version': '7.1',
-      path: encodedPagePath,
+      path: normalizedPath,
       includeContent: includeContent.toString(),
-      'versionDescriptor.version': 'wikiMaster',
     };
+
+    // Add versionDescriptor for pinning to wikiMaster branch
+    params['versionDescriptor.version'] = 'wikiMaster';
+
+    const finalUrl = `${url}?${new URLSearchParams(params).toString()}`;
+    console.log(`[WikiClient] Final URL: ${finalUrl}`);
 
     try {
       // Get authorization header
@@ -307,6 +371,7 @@ export class WikiClient {
         path: pageData.path,
         gitItemPath: pageData.gitItemPath,
         id: pageData.id,
+        remoteUrl: pageData.remoteUrl,
       };
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -324,22 +389,19 @@ export class WikiClient {
         // Handle 404 Not Found
         if (status === 404) {
           throw new AzureDevOpsResourceNotFoundError(
-            `Wiki page not found: ${pagePath} (normalized to: ${normalizedPath}) in wiki ${wikiId}. ` +
-              'Make sure the path follows wiki path rules: no .md extension, spaces instead of hyphens in filenames.',
+            `Wiki page not found at path: ${normalizedPath}`,
           );
         }
 
         // Handle 401 Unauthorized or 403 Forbidden
         if (status === 401 || status === 403) {
           throw new AzureDevOpsPermissionError(
-            `Permission denied to access wiki page: ${pagePath}`,
+            `Permission denied to access wiki page: ${normalizedPath}`,
           );
         }
 
         // Handle other error statuses
-        throw new AzureDevOpsError(
-          `Failed to get wiki page: ${errorMessage} ${axiosError.response?.data}`,
-        );
+        throw new AzureDevOpsError(`Failed to get wiki page: ${errorMessage}`);
       }
 
       // Handle network errors
@@ -651,17 +713,25 @@ export class WikiClient {
         recursionLevel: options?.recursionLevel || 'oneLevel',
       };
 
+      // Normalize path if provided
       if (options?.path) {
-        params.path = encodeURIComponent(options.path).replace(/%2F/g, '/');
+        const normalizedPath = this.normalizeWikiPath(options.path);
+        params.path = normalizedPath;
+        console.log(
+          `[WikiClient] Listing pages at path: ${options.path} -> normalized: ${normalizedPath}`,
+        );
       }
 
       if (options?.includeContent !== undefined) {
         params.includeContent = options.includeContent.toString();
       }
 
-      if (options?.versionDescriptor) {
-        params['versionDescriptor.version'] = options.versionDescriptor;
-      }
+      // Pin to wikiMaster branch by default
+      params['versionDescriptor.version'] =
+        options?.versionDescriptor || 'wikiMaster';
+
+      const finalUrl = `${url}?${new URLSearchParams(params).toString()}`;
+      console.log(`[WikiClient] List pages URL: ${finalUrl}`);
 
       // Make a GET request to list pages with correct API version
       const response = await axios.get(url, {
