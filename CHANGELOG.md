@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.50](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.49...mcp-server-azure-devops-v0.1.50) (2025-08-08)
+
+
+### Bug Fixes
+
+* correct package name in release-please config ([3cfe81c](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/3cfe81c150153a5a23c5fd0ad8fac4ea5dba46c6))
+
 ## [0.1.49](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.48...mcp-server-azure-devops-v0.1.49) (2025-08-08)
 
 
