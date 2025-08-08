@@ -277,7 +277,6 @@ export class WikiClient {
     // Normalize the wiki path according to Azure DevOps wiki path rules
     const normalizedPath = this.normalizeWikiPath(pagePath);
 
-
     // Try the primary path first
     try {
       return await this.fetchWikiPage(
@@ -289,7 +288,6 @@ export class WikiClient {
     } catch (error) {
       // On 404 with WikiPageNotFoundException, retry with alternative path
       if (error instanceof AzureDevOpsResourceNotFoundError) {
-
         const alternativePath = this.createAlternativePath(normalizedPath);
 
         try {
