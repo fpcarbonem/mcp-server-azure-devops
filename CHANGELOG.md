@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.54](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.53...mcp-server-azure-devops-v0.1.54) (2025-08-08)
+
+
+### Bug Fixes
+
+* **server:** sync VERSION with package.json; refactor(get_me): use WebApi Profile API instead of axios; chore(deps): set typescript to 5.5.4 ([cac4549](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/cac4549d7d51fef111010baf5daf828aa7fbfd8d))
+
 ## [0.1.53](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.52...mcp-server-azure-devops-v0.1.53) (2025-08-08)
 
 
