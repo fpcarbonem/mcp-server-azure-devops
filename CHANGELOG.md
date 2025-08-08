@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.51](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.50...mcp-server-azure-devops-v0.1.51) (2025-08-08)
+
+
+### Bug Fixes
+
+* implement ready-to-ship wiki tools specification ([1c08930](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/1c089308f7c8dfe8fde9d9703ab1ca433aa03a2c))
+
 ## [0.1.50](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.49...mcp-server-azure-devops-v0.1.50) (2025-08-08)
 
 
