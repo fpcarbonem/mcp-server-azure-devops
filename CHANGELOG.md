@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.56](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.55...mcp-server-azure-devops-v0.1.56) (2025-08-14)
+
+
+### Bug Fixes
+
+* **get_me:** add on-premises TFS support and hide tool categories ([51a0ee5](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/51a0ee5c420b2848825fdfb7c8985c1ac9d9bf0e))
+
 ## [0.1.55](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.54...mcp-server-azure-devops-v0.1.55) (2025-08-08)
 
 
