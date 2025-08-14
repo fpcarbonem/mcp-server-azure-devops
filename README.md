@@ -1,4 +1,4 @@
-# ℹ️ DISCUSSION: [Microsoft launched an official ADO MCP Server! 🎉🎉🎉](https://github.com/Tiberriver256/mcp-server-azure-devops/discussions/237)
+# ℹ️ NOTE: This is a fork of the original Azure DevOps MCP Server
 
 # Azure DevOps MCP Server
 
@@ -62,7 +62,7 @@ Be sure you are logged in to Azure CLI with `az login` then add the following:
   "mcpServers": {
     "azureDevOps": {
       "command": "npx",
-      "args": ["-y", "@tiberriver256/mcp-server-azure-devops"],
+      "args": ["-y", "@fpcarbonem/mcp-server-azure-devops"],
       "env": {
         "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/your-organization",
         "AZURE_DEVOPS_AUTH_METHOD": "azure-identity",
@@ -80,13 +80,32 @@ Be sure you are logged in to Azure CLI with `az login` then add the following:
   "mcpServers": {
     "azureDevOps": {
       "command": "npx",
-      "args": ["-y", "@tiberriver256/mcp-server-azure-devops"],
+      "args": ["-y", "@fpcarbonem/mcp-server-azure-devops"],
       "env": {
         "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/your-organization",
         "AZURE_DEVOPS_AUTH_METHOD": "pat",
         "AZURE_DEVOPS_PAT": "<YOUR_PAT>",
         "AZURE_DEVOPS_DEFAULT_PROJECT": "your-project-name"
       }
+    }
+  }
+}
+```
+
+#### Running from WSL
+
+If you need to run the server from WSL (Windows Subsystem for Linux), use the following configuration:
+
+```json
+{
+  "mcpServers": {
+    "azureDevOps": {
+      "command": "wsl",
+      "args": [
+        "bash", 
+        "-c", 
+        "AZURE_DEVOPS_AUTH_METHOD=pat AZURE_DEVOPS_ORG_URL='https://dev.azure.com/your-organization' AZURE_DEVOPS_PAT='your-pat-token' AZURE_DEVOPS_DEFAULT_PROJECT='your-project-name' npx -y @fpcarbonem/mcp-server-azure-devops"
+      ]
     }
   }
 }
@@ -205,7 +224,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for con
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=tiberriver256/mcp-server-azure-devops&type=Date)](https://www.star-history.com/#tiberriver256/mcp-server-azure-devops&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=fpcarbonem/mcp-server-azure-devops&type=Date)](https://www.star-history.com/#fpcarbonem/mcp-server-azure-devops&Date)
 
 ## License
 

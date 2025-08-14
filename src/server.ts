@@ -33,13 +33,13 @@ import {
 } from './features/projects';
 
 import {
-  repositoriesTools,
+  // repositoriesTools, // Hidden
   isRepositoriesRequest,
   handleRepositoriesRequest,
 } from './features/repositories';
 
 import {
-  organizationsTools,
+  // organizationsTools, // Hidden
   isOrganizationsRequest,
   handleOrganizationsRequest,
 } from './features/organizations';
@@ -57,13 +57,13 @@ import {
 } from './features/users';
 
 import {
-  pullRequestsTools,
+  // pullRequestsTools, // Hidden
   isPullRequestsRequest,
   handlePullRequestsRequest,
 } from './features/pull-requests';
 
 import {
-  pipelinesTools,
+  // pipelinesTools, // Hidden
   isPipelinesRequest,
   handlePipelinesRequest,
 } from './features/pipelines';
@@ -113,13 +113,13 @@ export function createAzureDevOpsServer(config: AzureDevOpsConfig): Server {
     // Combine tools from all features
     const tools = [
       ...usersTools,
-      ...organizationsTools,
+      // ...organizationsTools, // Hidden: list_organizations
       ...projectsTools,
-      ...repositoriesTools,
+      // ...repositoriesTools, // Hidden: get_repository, get_repository_details, list_repositories, get_file_content, get_all_repositories_tree
       ...workItemsTools,
       ...searchTools,
-      ...pullRequestsTools,
-      ...pipelinesTools,
+      // ...pullRequestsTools, // Hidden: create_pull_request, list_pull_requests, get_pull_request_comments, add_pull_request_comment, update_pull_request
+      // ...pipelinesTools, // Hidden: list_pipelines, get_pipeline, trigger_pipeline
       ...wikisTools,
     ];
 
