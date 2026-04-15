@@ -39,7 +39,7 @@ The server uses a feature-based architecture where each feature area (like work-
 
 ### Prerequisites
 
-- Node.js (v16+)
+- Node.js **18+** (LTS recommended; required for this package)
 - npm or yarn
 - Azure DevOps account with appropriate access
 - Authentication credentials (see [Authentication Guide](docs/authentication.md) for details):
@@ -47,11 +47,75 @@ The server uses a feature-based architecture where each feature area (like work-
   - Azure Identity credentials, or
   - Azure CLI login
 
-### Running with NPX
+### Install from npm
+
+Published as [`@fpcarbonem/mcp-server-azure-devops`](https://www.npmjs.com/package/@fpcarbonem/mcp-server-azure-devops).
+
+- **Recommended (no global install):** use `npx -y @fpcarbonem/mcp-server-azure-devops` in your MCP config (see below). `npx` downloads the package when needed.
+- **Global CLI:** `npm install -g @fpcarbonem/mcp-server-azure-devops`, then use command `mcp-server-azure-devops` instead of `npx` in your MCP server `command` / `args`.
+
+Maintainers: ensure `npm run build` has been run before `npm publish` (a `prepublishOnly` script runs the build automatically).
+
+### MCP client configuration by platform
+
+Covers **Windows**, **macOS**, **Linux**, and **Windows + WSL**. The server is plain Node.js and runs the same on every OS. What changes is **how your MCP host starts the process** and **where Node, `az`, and credentials live** (Windows vs WSL vs macOS/Linux).
+
+#### macOS and Linux
+
+- Use `"command": "npx"` with the `args` shown in the examples below (or `pnpm dlx` / `yarn dlx` if you standardize on those; keep the package name in the args list).
+- Install **Node.js 18+** the usual way (installer, Homebrew, nvm, fnm, or your distro’s packages). Confirm `npx -v` in the same environment you use for development.
+- For **`azure-identity`** or **`azure-cli`**, run `az login` in a terminal on **that same OS and user account** so `DefaultAzureCredential` can see Azure CLI credentials when the IDE launches the MCP server.
+
+#### Windows (Node installed on Windows)
+
+- Start with `"command": "npx"` like the samples below. If the MCP client fails with **“npx is not recognized”** (or similar), use **`npx.cmd`** instead, or the full path reported by PowerShell: `Get-Command npx | Select-Object -ExpandProperty Source`.
+- Install [Node.js for Windows](https://nodejs.org/) (LTS) so `npx` is on your user `PATH` for GUI apps (Cursor, Claude Desktop). A terminal-only `PATH` is sometimes not inherited by the IDE—reinstall/repair Node and tick “Add to PATH” if needed.
+- **Do not** set MCP `command` to `mcp-server-azure-devops` unless that name is on **Windows** `PATH` (for example after `npm install -g`). The supported default is still **`npx`** with the package name in `args`.
+- **Azure CLI / `azure-cli` auth:** install [Azure CLI for Windows](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) and run `az login` in PowerShell under the **same Windows user** that runs the MCP client.
+
+#### Windows using WSL (Node runs inside Linux)
+
+Use this when Node/npm only exist in WSL, or you want the server to run in Linux while the IDE stays on Windows.
+
+1. Install **Node.js 18+ inside WSL** (nvm, fnm, or distro packages). Open your distro and verify `node -v` and `npx -v`.
+2. Prefer **`bash -lc`** so login profiles load (nvm/fnm paths).
+3. **Forward environment variables from Windows into WSL** with [`WSLENV`](https://learn.microsoft.com/en-us/windows/wsl/interop#share-environment-variables-between-windows-and-wsl-with-wslenv) so secrets stay in the MCP `env` block instead of a long quoted shell string.
+
+**Recommended (WSL + `WSLENV`, PAT in MCP `env`):**
+
+```json
+{
+  "mcpServers": {
+    "azureDevOps": {
+      "command": "wsl.exe",
+      "args": ["bash", "-lc", "npx -y @fpcarbonem/mcp-server-azure-devops"],
+      "env": {
+        "AZURE_DEVOPS_AUTH_METHOD": "pat",
+        "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/your-organization",
+        "AZURE_DEVOPS_PAT": "<YOUR_PAT>",
+        "AZURE_DEVOPS_DEFAULT_PROJECT": "your-project-name",
+        "WSLENV": "AZURE_DEVOPS_AUTH_METHOD/u:AZURE_DEVOPS_ORG_URL/u:AZURE_DEVOPS_PAT/u:AZURE_DEVOPS_DEFAULT_PROJECT/u"
+      }
+    }
+  }
+}
+```
+
+The `/u` flag converts values to Unix form when needed. Add more keys to both `env` and `WSLENV` if you use extra variables (for example `AZURE_DEVOPS_API_VERSION`).
+
+**Non-default WSL distro:** add `-d` and the distro name after `wsl.exe`, for example:
+
+```json
+"args": ["-d", "Ubuntu", "bash", "-lc", "npx -y @fpcarbonem/mcp-server-azure-devops"]
+```
+
+**Azure Identity / Azure CLI in WSL:** run `az login` **inside that same WSL distro** so `DefaultAzureCredential` can use `AzureCliCredential` there.
+
+**Alternative (single shell line, PAT embedded in the string):** you can export variables inline in the `bash -lc '...'` string, but that duplicates secrets next to shell quoting; prefer `WSLENV` above.
 
 ### Usage with Claude Desktop/Cursor AI
 
-To integrate with Claude Desktop or Cursor AI, add one of the following configurations to your configuration file.
+Add one of the following configurations to your MCP configuration. These examples use `"command": "npx"`; on **Windows**, switch to `npx.cmd` if `npx` is not found (see [platform notes](#mcp-client-configuration-by-platform)). On **WSL**, prefer the `wsl.exe` + `WSLENV` layout in that same section.
 
 #### Azure Identity Authentication
 
@@ -92,24 +156,12 @@ Be sure you are logged in to Azure CLI with `az login` then add the following:
 }
 ```
 
-#### Running from WSL
+#### MCP config file locations (reference)
 
-If you need to run the server from WSL (Windows Subsystem for Linux), use the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "azureDevOps": {
-      "command": "wsl",
-      "args": [
-        "bash", 
-        "-c", 
-        "AZURE_DEVOPS_AUTH_METHOD=pat AZURE_DEVOPS_ORG_URL='https://dev.azure.com/your-organization' AZURE_DEVOPS_PAT='your-pat-token' AZURE_DEVOPS_DEFAULT_PROJECT='your-project-name' npx -y @fpcarbonem/mcp-server-azure-devops"
-      ]
-    }
-  }
-}
-```
+- **Cursor:** MCP is configured in the editor (for example project `.cursor/mcp.json` or Cursor **Settings → MCP**, depending on your Cursor version).
+- **Claude Desktop (Windows):** `%AppData%\Claude\claude_desktop_config.json`
+- **Claude Desktop (macOS):** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Desktop (Linux):** `~/.config/Claude/claude_desktop_config.json`
 
 For detailed configuration instructions and more authentication options, see the [Authentication Guide](docs/authentication.md).
 
@@ -156,7 +208,7 @@ Common issues include:
 
 ## Authentication Implementation Details
 
-For technical details about how authentication is implemented in the Azure DevOps MCP server, see the [Authentication Guide](docs/authentication.md) and the source code in the `src/auth` directory.
+For technical details about how authentication is implemented in the Azure DevOps MCP server, see the [Authentication Guide](docs/authentication.md) and the source code under `src/shared/auth`.
 
 ## Available Tools
 

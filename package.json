@@ -9,9 +9,24 @@
   },
   "files": [
     "dist/",
+    "scripts/prepare.cjs",
     "LICENSE",
     "README.md"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fpcarbonem/mcp-server-azure-devops.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fpcarbonem/mcp-server-azure-devops/issues"
+  },
+  "homepage": "https://github.com/fpcarbonem/mcp-server-azure-devops#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "config": {
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
@@ -71,7 +86,8 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "prepare": "husky install",
+    "prepare": "node scripts/prepare.cjs",
+    "prepublishOnly": "npm run build",
     "commit": "cz"
   },
   "keywords": [
