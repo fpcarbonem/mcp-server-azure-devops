@@ -9,41 +9,57 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # release-please-action still declares `runs.using: node20`; GitHub warns until the action ships node24.
+    # See https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      # Do not use google-github-actions/release-please-action (archived). Use googleapis/release-please-action.
+      - uses: googleapis/release-please-action@v4.4.1
         id: release
         with:
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
-          
-      # The following steps only run if a new release is created
+
+      # Compare to the string 'true' — action outputs are strings; the string "false" is truthy in GHA expressions.
       - name: Checkout code
-        if: ${{ steps.release.outputs.release_created }}
-        uses: actions/checkout@v3
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/checkout@v4
         with:
           ref: ${{ steps.release.outputs.tag_name }}
-          
+
       - name: Setup Node.js
-        if: ${{ steps.release.outputs.release_created }}
-        uses: actions/setup-node@v3
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
           registry-url: 'https://registry.npmjs.org/'
-          
+
+      - name: Verify npm token (repository secret NPM_TOKEN)
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::Missing or empty repository secret NPM_TOKEN. Add an npm granular access token with Publish permission for scope @fpcarbonem (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
       - name: Install Dependencies
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         run: npm ci
-        
+
       - name: Build package
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         run: npm run build
-        
+
       - name: Publish to npm
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
