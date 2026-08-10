@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.57](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.56...mcp-server-azure-devops-v0.1.57) (2026-08-10)
+
+
+### Bug Fixes
+
+* **get_me:** fix PAT auth header crash on TFS on-premises ([d0e1698](https://github.com/fpcarbonem/mcp-server-azure-devops/commit/d0e1698ff928836c6a027f119fa4431f36f89414))
+
 ## [0.1.56](https://github.com/fpcarbonem/mcp-server-azure-devops/compare/mcp-server-azure-devops-v0.1.55...mcp-server-azure-devops-v0.1.56) (2025-08-14)
 
 
