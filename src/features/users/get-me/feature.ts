@@ -81,17 +81,22 @@ async function getMeFromTfsEndpoint(connection: WebApi): Promise<UserProfile> {
     // Use the TFS-specific GetUserProfile endpoint that we know works
     const profileUrl = `${connection.serverUrl}/_api/_common/GetUserProfile?__v=7.0`;
 
-    // Get authentication headers from the connection
+    // Get authentication headers from the connection.
+    // prepareRequest is a void function that mutates options.headers in place —
+    // options must already have a headers object, otherwise the assignment throws.
     const authHandler = (
       connection as unknown as {
         authHandler?: {
-          prepareRequest: (
-            options: object,
-          ) => Promise<{ headers?: Record<string, string> }>;
+          prepareRequest: (options: {
+            headers: Record<string, string>;
+          }) => void;
         };
       }
     ).authHandler;
-    const authHeader = authHandler ? await authHandler.prepareRequest({}) : {};
+    const requestOptions: { headers: Record<string, string> } = { headers: {} };
+    if (authHandler) {
+      authHandler.prepareRequest(requestOptions);
+    }
 
     // Import https module at the top level to avoid require() in function
     const https = await import('https');
@@ -99,7 +104,7 @@ async function getMeFromTfsEndpoint(connection: WebApi): Promise<UserProfile> {
     const response = await axios.get(profileUrl, {
       headers: {
         Accept: 'application/json',
-        ...authHeader.headers,
+        ...requestOptions.headers,
       },
       // Disable SSL verification if needed for self-signed certificates
       httpsAgent:
