@@ -54,9 +54,9 @@ describe('Pipelines Request Handlers', () => {
 
       const response = await handlePipelinesRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockPipelines,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockPipelines);
       expect(listPipelines).toHaveBeenCalledWith(
         mockConnection,
         expect.objectContaining({
@@ -82,9 +82,9 @@ describe('Pipelines Request Handlers', () => {
 
       const response = await handlePipelinesRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockPipeline,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockPipeline);
       expect(getPipeline).toHaveBeenCalledWith(
         mockConnection,
         expect.objectContaining({
@@ -111,7 +111,9 @@ describe('Pipelines Request Handlers', () => {
 
       const response = await handlePipelinesRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(mockRun);
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockRun);
       expect(triggerPipeline).toHaveBeenCalledWith(
         mockConnection,
         expect.objectContaining({

@@ -96,7 +96,9 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].text).toBe(mockWikisResponse);
+      expect((response.content[0] as { text: string }).text).toBe(
+        mockWikisResponse,
+      );
       expect(getWikis).toHaveBeenCalledWith({
         organizationId: undefined, // defaultOrg is undefined in test environment
         projectId: 'project1',
@@ -132,7 +134,9 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].text).toBe(mockWikiPageResponse);
+      expect((response.content[0] as { text: string }).text).toBe(
+        mockWikiPageResponse,
+      );
       expect(getWikiPage).toHaveBeenCalledWith({
         organizationId: undefined,
         projectId: 'project1',
@@ -174,7 +178,9 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].text).toBe(mockWikiResponse);
+      expect((response.content[0] as { text: string }).text).toBe(
+        mockWikiResponse,
+      );
       expect(createWiki).toHaveBeenCalledWith(
         mockConnection,
         expect.objectContaining({
@@ -221,7 +227,9 @@ describe('Wikis Request Handlers', () => {
 
       const response = await handleWikisRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].text).toBe(mockUpdateResponse);
+      expect((response.content[0] as { text: string }).text).toBe(
+        mockUpdateResponse,
+      );
       expect(updateWikiPage).toHaveBeenCalledWith({
         organizationId: undefined,
         projectId: 'project1',

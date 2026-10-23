@@ -73,9 +73,9 @@ describe('Pull Requests Request Handlers', () => {
 
       const response = await handlePullRequestsRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockPullRequest,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockPullRequest);
       expect(createPullRequest).toHaveBeenCalledWith(
         mockConnection,
         expect.any(String),
@@ -112,9 +112,9 @@ describe('Pull Requests Request Handlers', () => {
 
       const response = await handlePullRequestsRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockPullRequests,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockPullRequests);
       expect(listPullRequests).toHaveBeenCalledWith(
         mockConnection,
         expect.any(String),
@@ -149,9 +149,9 @@ describe('Pull Requests Request Handlers', () => {
 
       const response = await handlePullRequestsRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockComments,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockComments);
       expect(getPullRequestComments).toHaveBeenCalledWith(
         mockConnection,
         expect.any(String),
@@ -199,9 +199,9 @@ describe('Pull Requests Request Handlers', () => {
 
       const response = await handlePullRequestsRequest(mockConnection, request);
       expect(response.content).toHaveLength(1);
-      expect(JSON.parse(response.content[0].text as string)).toEqual(
-        mockResult,
-      );
+      expect(
+        JSON.parse((response.content[0] as { text: string }).text),
+      ).toEqual(mockResult);
       expect(addPullRequestComment).toHaveBeenCalledWith(
         mockConnection,
         expect.any(String),

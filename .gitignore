@@ -31,3 +31,12 @@ coverage/
 # Logs
 logs/
 *.log 
+# Local tool state
+.remember/
+.claude/
+.cursor/
+.mcp.json
+graphify-out/
+.kilocode/
+memory/
+tasks.json

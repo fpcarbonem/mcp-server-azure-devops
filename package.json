@@ -9,6 +9,10 @@
   },
   "files": [
     "dist/",
+    "!dist/**/*.spec.*",
+    "!dist/**/__test__/**",
+    "!dist/shared/test/**",
+    "!dist/**/*.map",
     "scripts/prepare.cjs",
     "LICENSE",
     "README.md"

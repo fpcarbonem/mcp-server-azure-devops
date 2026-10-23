@@ -5,7 +5,7 @@
  * Uses createRequire to avoid ESM JSON import assertion issues across Node versions.
  */
 // Require JSON directly to support CommonJS outputs without import assertions
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const pkg = require('../../../package.json') as { version: string };
 
 export const VERSION = pkg.version;
